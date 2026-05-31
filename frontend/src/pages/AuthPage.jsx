@@ -3,12 +3,15 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { authenticateWithBiometric, getBiometricSessionToken, isBiometricEnabled, isBiometricSupported, saveBiometricSessionToken } from "../services/biometrics";
-import { getApiBaseUrl } from "../services/api";
+import { getApiBaseUrl, setApiBaseUrl } from "../services/api";
+
+const PRODUCTION_API_URL = "https://financeflow-api-m78a.onrender.com/api/v1";
 
 export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
+  const [showRepairConnection, setShowRepairConnection] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
@@ -24,6 +27,7 @@ export default function AuthPage() {
   const onSubmit = async (event) => {
     event.preventDefault();
     setError("");
+    setShowRepairConnection(false);
 
     if (!form.email || !form.password) {
       setError("Completa todos los campos obligatorios.");
@@ -44,10 +48,17 @@ export default function AuthPage() {
       }
       if (!err?.response) {
         setError(`No se pudo conectar con el servidor (${getApiBaseUrl()}). Revisa la configuración de conexión.`);
+        setShowRepairConnection(true);
         return;
       }
       setError("No se pudo autenticar. Revisa tus credenciales.");
     }
+  };
+
+  const repairConnection = () => {
+    setApiBaseUrl(PRODUCTION_API_URL);
+    setShowRepairConnection(false);
+    setError(`Conexión restablecida al servidor oficial (${PRODUCTION_API_URL}). Intenta iniciar sesión de nuevo.`);
   };
 
   const loginWithBiometric = async () => {
@@ -124,6 +135,16 @@ export default function AuthPage() {
           </div>
 
           {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p> : null}
+
+          {showRepairConnection ? (
+            <button
+              type="button"
+              onClick={repairConnection}
+              className="w-full rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+            >
+              Reparar conexión automáticamente
+            </button>
+          ) : null}
 
           <button className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700" type="submit">
             Iniciar sesión
