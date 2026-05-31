@@ -253,3 +253,4 @@ personal-finance-saas/
 3. Para Belvo define `BELVO_SECRET_ID`, `BELVO_SECRET_PASSWORD` y `BELVO_BASE_URL`.
 4. El frontend envia `public_token` a `POST /api/v1/bank/authenticate` y backend lo intercambia por `access_token`.
 5. Para sincronizacion automatica, publica webhook a `POST /api/v1/bank/webhook` con `event_type=TRANSACTIONS_AVAILABLE`.
+=======
