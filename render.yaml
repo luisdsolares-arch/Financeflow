@@ -28,7 +28,7 @@ services:
           name: financeflow-db
           property: connectionString
       - key: ALLOWED_ORIGINS
-        value: '["https://financeflow-api-m78a.onrender.com","capacitor://localhost","http://localhost:5173"]'
+        value: '["https://financeflow-api-m78a.onrender.com","capacitor://localhost","ionic://localhost","http://localhost","http://localhost:5173"]'
 
 databases:
   - name: financeflow-db
