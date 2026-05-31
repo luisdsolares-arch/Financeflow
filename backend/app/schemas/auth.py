@@ -15,3 +15,15 @@ class LoginRequest(BaseModel):
 class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class TechnicalAccessVerifyRequest(BaseModel):
+    pin: str = Field(min_length=4, max_length=6)
+
+
+class TechnicalAccessStatusResponse(BaseModel):
+    ok: bool
+    is_blocked: bool
+    blocked_seconds_left: int
+    remaining_attempts: int
+    message: str = ""

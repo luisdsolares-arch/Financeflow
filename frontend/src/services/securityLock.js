@@ -1,6 +1,10 @@
+import api from "./api";
+
 const SETTINGS_KEY = "financeflow.settings.v1";
 const LOCK_STATE_KEY = "financeflow.security.locked.v1";
 const LAST_ACTIVE_AT_KEY = "financeflow.security.last_active_at.v1";
+const TECH_MAX_ATTEMPTS = 3;
+const TECH_BLOCK_MS = 30_000;
 
 const toInt = (value, fallback) => {
   const parsed = Number(value);
@@ -97,4 +101,31 @@ export const clearSessionLockState = () => {
   localStorage.removeItem(LOCK_STATE_KEY);
   localStorage.removeItem(LAST_ACTIVE_AT_KEY);
   window.dispatchEvent(new Event("financeflow:session-unlocked"));
+};
+
+export const getTechnicalPinPolicy = () => ({
+  maxAttempts: TECH_MAX_ATTEMPTS,
+  blockDurationMs: TECH_BLOCK_MS,
+});
+
+export const getTechnicalAccessStatus = async () => {
+  const { data } = await api.get("/auth/technical-access/status");
+  return {
+    ok: Boolean(data?.ok),
+    isBlocked: Boolean(data?.is_blocked),
+    blockedSecondsLeft: Number(data?.blocked_seconds_left || 0),
+    remainingAttempts: Number(data?.remaining_attempts || 0),
+    message: String(data?.message || ""),
+  };
+};
+
+export const verifyTechnicalPinAttempt = async (pin) => {
+  const { data } = await api.post("/auth/technical-access/verify", { pin: String(pin || "") });
+  return {
+    ok: Boolean(data?.ok),
+    isBlocked: Boolean(data?.is_blocked),
+    blockedSecondsLeft: Number(data?.blocked_seconds_left || 0),
+    remainingAttempts: Number(data?.remaining_attempts || 0),
+    message: String(data?.message || ""),
+  };
 };

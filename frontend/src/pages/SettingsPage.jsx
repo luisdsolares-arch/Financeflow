@@ -1,14 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
-import { getApiBaseUrl, setApiBaseUrl } from "../services/api";
 import { clearBiometricConfig, enableBiometricLogin, getBiometricAvailability, isBiometricEnabled } from "../services/biometrics";
 import { clearSessionLockState, disablePin, savePin } from "../services/securityLock";
 
 const SETTINGS_KEY = "financeflow.settings.v1";
 const PROFILE_UPDATED_EVENT = "financeflow:profile-updated";
-const PRODUCTION_API_URL = "https://financeflow-api-m78a.onrender.com/api/v1";
-
 const defaultSettings = {
   profile_name: "Andrea Ruiz",
   profile_email: "demo.app@example.com",
@@ -46,7 +43,8 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [pinDraft, setPinDraft] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
-  const [apiBaseUrl, setApiBaseUrlInput] = useState("");
+  const [settingsTapCount, setSettingsTapCount] = useState(0);
+  const [lastSettingsTap, setLastSettingsTap] = useState(0);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -97,7 +95,6 @@ export default function SettingsPage() {
     };
 
     void loadBiometricState();
-    setApiBaseUrlInput(getApiBaseUrl());
     return () => {
       active = false;
     };
@@ -235,16 +232,17 @@ export default function SettingsPage() {
     }
   };
 
-  const saveConnectionSettings = () => {
-    setApiBaseUrl(apiBaseUrl);
-    setApiBaseUrlInput(getApiBaseUrl());
-    setStatus("Conexión API actualizada para este dispositivo.");
-  };
+  const openTechnicalConnectionSettings = () => {
+    const now = Date.now();
+    const inSequence = now - lastSettingsTap < 1200;
+    const nextCount = inSequence ? settingsTapCount + 1 : 1;
+    setSettingsTapCount(nextCount);
+    setLastSettingsTap(now);
 
-  const restoreOfficialConnection = () => {
-    setApiBaseUrl(PRODUCTION_API_URL);
-    setApiBaseUrlInput(getApiBaseUrl());
-    setStatus("Conexión restablecida al servidor oficial.");
+    if (nextCount >= 6) {
+      setSettingsTapCount(0);
+      navigate("/connection-settings", { state: { from: "/app/settings" } });
+    }
   };
 
   return (
@@ -446,33 +444,6 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        <div className="panel space-y-4 p-4 sm:p-5 lg:p-6 xl:col-span-2">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-700">Conexión API</h3>
-            <p className="mt-1 text-sm text-slate-500">Usa este ajuste solo si necesitas cambiar el servidor para pruebas. En Android/APK se prioriza el servidor oficial por seguridad.</p>
-          </div>
-
-          <label className="block text-sm text-slate-600">
-            URL API
-            <input
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
-              value={apiBaseUrl}
-              onChange={(e) => setApiBaseUrlInput(e.target.value)}
-              placeholder="https://financeflow-api-m78a.onrender.com/api/v1"
-            />
-          </label>
-
-          <p className="text-xs text-slate-500">Si escribes solo el dominio, la app agregará automáticamente /api/v1. Si dejas este valor vacío, se usará la configuración predeterminada.</p>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <button type="button" onClick={restoreOfficialConnection} className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100">
-              Usar servidor oficial
-            </button>
-            <button type="button" onClick={saveConnectionSettings} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-              Guardar conexión
-            </button>
-          </div>
-        </div>
       </div>
 
       <div className="panel flex flex-col items-start gap-2 p-4 sm:flex-row sm:flex-wrap sm:items-center">
@@ -489,6 +460,17 @@ export default function SettingsPage() {
           Restablecer
         </button>
         {status ? <p className="text-sm text-slate-700 sm:ml-2">{status}</p> : null}
+      </div>
+
+      <div className="px-1">
+        <button
+          type="button"
+          onClick={openTechnicalConnectionSettings}
+          className="text-[11px] text-slate-400 hover:text-slate-500"
+          aria-label="Abrir configuración técnica"
+        >
+          Versión 1.0.0
+        </button>
       </div>
     </div>
   );

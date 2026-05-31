@@ -1,8 +1,9 @@
 import { Eye, EyeOff, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { getApiBaseUrl } from "../services/api";
+import { getTechnicalAccessStatus, getTechnicalPinPolicy, verifyTechnicalPinAttempt } from "../services/securityLock";
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -12,7 +13,22 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState("");
   const [logoTapCount, setLogoTapCount] = useState(0);
   const [lastLogoTap, setLastLogoTap] = useState(0);
+  const [showTechnicalPinPrompt, setShowTechnicalPinPrompt] = useState(false);
+  const [technicalPinInput, setTechnicalPinInput] = useState("");
+  const [technicalPinError, setTechnicalPinError] = useState("");
+  const [technicalBlockedSeconds, setTechnicalBlockedSeconds] = useState(0);
+  const [technicalAttemptsLeft, setTechnicalAttemptsLeft] = useState(getTechnicalPinPolicy().maxAttempts);
   const navigate = useNavigate();
+
+  const refreshTechnicalStatus = async () => {
+    try {
+      const status = await getTechnicalAccessStatus();
+      setTechnicalBlockedSeconds(status.blockedSecondsLeft);
+      setTechnicalAttemptsLeft(status.remainingAttempts);
+    } catch {
+      setTechnicalPinError("No se pudo validar el acceso técnico.");
+    }
+  };
 
   const onLogoTap = () => {
     const now = Date.now();
@@ -22,7 +38,45 @@ export default function RegisterPage() {
     setLastLogoTap(now);
     if (nextCount >= 5) {
       setLogoTapCount(0);
+      setTechnicalPinInput("");
+      setTechnicalPinError("");
+      setShowTechnicalPinPrompt(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!showTechnicalPinPrompt) {
+      return undefined;
+    }
+    void refreshTechnicalStatus();
+    return undefined;
+  }, [showTechnicalPinPrompt]);
+
+  useEffect(() => {
+    if (!showTechnicalPinPrompt || technicalBlockedSeconds <= 0) {
+      return;
+    }
+    const intervalId = window.setInterval(() => {
+      setTechnicalBlockedSeconds((value) => (value > 0 ? value - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [showTechnicalPinPrompt, technicalBlockedSeconds]);
+
+  const confirmTechnicalAccess = async () => {
+    setTechnicalPinError("");
+    try {
+      const result = await verifyTechnicalPinAttempt(technicalPinInput);
+      setTechnicalBlockedSeconds(result.blockedSecondsLeft);
+      setTechnicalAttemptsLeft(result.remainingAttempts);
+      if (!result.ok) {
+        setTechnicalPinError(result.message || "No se pudo validar el PIN técnico.");
+        return;
+      }
+      setShowTechnicalPinPrompt(false);
+      setTechnicalPinInput("");
       navigate("/connection-settings", { state: { from: "/register" } });
+    } catch {
+      setTechnicalPinError("No se pudo validar el PIN técnico.");
     }
   };
 
@@ -153,6 +207,39 @@ export default function RegisterPage() {
 
           {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p> : null}
           {success ? <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{success}</p> : null}
+
+          {showTechnicalPinPrompt ? (
+            <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Acceso técnico</p>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
+                placeholder="PIN"
+                value={technicalPinInput}
+                onChange={(event) => setTechnicalPinInput(event.target.value.replace(/\D+/g, ""))}
+              />
+              {technicalBlockedSeconds > 0 ? <p className="text-xs text-amber-700">Bloqueado temporalmente. Intenta de nuevo en {technicalBlockedSeconds}s.</p> : <p className="text-xs text-slate-500">Intentos restantes: {technicalAttemptsLeft}.</p>}
+              {technicalPinError ? <p className="text-xs text-rose-700">{technicalPinError}</p> : null}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowTechnicalPinPrompt(false);
+                    setTechnicalPinInput("");
+                    setTechnicalPinError("");
+                  }}
+                  className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+                <button type="button" onClick={confirmTechnicalAccess} disabled={technicalBlockedSeconds > 0} className="flex-1 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60">
+                  Continuar
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2">
             <button type="button" onClick={() => navigate("/auth")} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">

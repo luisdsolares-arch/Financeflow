@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     jwt_secret: str = "change_me"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
+    technical_access_pin: str = "0812"
+    technical_access_max_attempts: int = 3
+    technical_access_block_seconds: int = 30
 
     plaid_client_id: str = ""
     plaid_secret: str = ""
