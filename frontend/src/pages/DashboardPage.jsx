@@ -12,20 +12,56 @@ import {
   YAxis,
 } from "recharts";
 import KpiCard from "../components/KpiCard";
-import { fallbackSummary } from "../data/mock";
 import api from "../services/api";
 import { formatCurrency } from "../services/currency";
 
 const palette = ["#0F172A", "#10B981", "#EF4444", "#334155", "#94A3B8"];
+const DASHBOARD_SUMMARY_CACHE_KEY = "financeflow.dashboard.summary.v1";
+
+const emptySummary = {
+  net_balance: 0,
+  monthly_income: 0,
+  monthly_expenses: 0,
+  saving_capacity_pct: 0,
+  projected_monthly_reserve: 0,
+  expenses_by_category: {},
+  recent_transactions: [],
+  upcoming_planned_expenses: [],
+};
+
+const readCachedSummary = () => {
+  try {
+    const raw = localStorage.getItem(DASHBOARD_SUMMARY_CACHE_KEY);
+    if (!raw) {
+      return emptySummary;
+    }
+    const parsed = JSON.parse(raw);
+    return {
+      ...emptySummary,
+      ...parsed,
+      expenses_by_category: parsed?.expenses_by_category || {},
+      recent_transactions: Array.isArray(parsed?.recent_transactions) ? parsed.recent_transactions : [],
+      upcoming_planned_expenses: Array.isArray(parsed?.upcoming_planned_expenses) ? parsed.upcoming_planned_expenses : [],
+    };
+  } catch {
+    return emptySummary;
+  }
+};
 
 export default function DashboardPage() {
-  const [summary, setSummary] = useState(fallbackSummary);
+  const [summary, setSummary] = useState(() => readCachedSummary());
 
   useEffect(() => {
     api
       .get("/dashboard/summary")
-      .then((res) => setSummary(res.data))
-      .catch(() => setSummary(fallbackSummary));
+      .then((res) => {
+        const next = { ...emptySummary, ...res.data };
+        setSummary(next);
+        localStorage.setItem(DASHBOARD_SUMMARY_CACHE_KEY, JSON.stringify(next));
+      })
+      .catch(() => {
+        setSummary(readCachedSummary());
+      });
   }, []);
 
   const categoryData = Object.entries(summary.expenses_by_category || {}).map(([name, value]) => ({ name, value }));
