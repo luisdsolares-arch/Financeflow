@@ -40,3 +40,50 @@ def test_create_and_list_planned_expenses(client):
     assert len(items) == 1
     assert items[0]["description"] == "Seguro del coche"
     assert items[0]["recommended_monthly_saving"] > 0
+
+
+def test_mark_planned_expense_paid_flow(client):
+    headers = _auth_headers(client, email="planned-mark@example.com")
+    due_date = (date.today() + timedelta(days=20)).isoformat()
+
+    one_time = client.post(
+        "/api/v1/transactions/planned",
+        headers=headers,
+        json={
+            "description": "ITV",
+            "category": "Transporte",
+            "amount": 50,
+            "due_date": due_date,
+            "recurrence_type": "one_time",
+            "planning_mode": "monthly",
+            "reminder_days_before": 7,
+        },
+    )
+    assert one_time.status_code == 201
+    one_time_id = one_time.json()["id"]
+
+    mark_one_time = client.patch(f"/api/v1/transactions/planned/{one_time_id}/mark-paid", headers=headers)
+    assert mark_one_time.status_code == 200
+    assert "puntual" in mark_one_time.json()["message"].lower()
+
+    recurring = client.post(
+        "/api/v1/transactions/planned",
+        headers=headers,
+        json={
+            "description": "Alquiler trastero",
+            "category": "Vivienda",
+            "amount": 90,
+            "due_date": due_date,
+            "recurrence_type": "monthly",
+            "planning_mode": "monthly",
+            "reminder_days_before": 10,
+        },
+    )
+    assert recurring.status_code == 201
+    recurring_id = recurring.json()["id"]
+    first_due_date = recurring.json()["due_date"]
+
+    mark_recurring = client.patch(f"/api/v1/transactions/planned/{recurring_id}/mark-paid", headers=headers)
+    assert mark_recurring.status_code == 200
+    assert "recurrente" in mark_recurring.json()["message"].lower()
+    assert mark_recurring.json()["planned_expense"]["due_date"] != first_due_date

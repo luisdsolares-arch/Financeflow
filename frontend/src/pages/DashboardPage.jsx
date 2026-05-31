@@ -43,7 +43,40 @@ export default function DashboardPage() {
         <KpiCard label="Balance Total Neto" value={formatCurrency(summary.net_balance)} />
         <KpiCard label="Ingresos del Mes" value={formatCurrency(summary.monthly_income)} tone="success" />
         <KpiCard label="Gastos del Mes" value={formatCurrency(summary.monthly_expenses)} tone="danger" />
-        <KpiCard label="Capacidad de Ahorro" value={`${summary.saving_capacity_pct}%`} hint="Objetivo recomendado >= 20%" />
+        <KpiCard
+          label="Capacidad de Ahorro"
+          value={`${summary.saving_capacity_pct}%`}
+          hint={`Reserva sugerida mensual: ${formatCurrency(summary.projected_monthly_reserve || 0)}`}
+        />
+      </div>
+
+      <div className="panel p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-slate-700">Próximos Gastos Planificados</h2>
+          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+            Reserva mensual sugerida: {formatCurrency(summary.projected_monthly_reserve || 0)}
+          </span>
+        </div>
+        <div className="mt-3 space-y-2">
+          {summary.upcoming_planned_expenses?.length ? (
+            summary.upcoming_planned_expenses.map((item) => (
+              <article key={item.id} className="rounded-xl border border-slate-200 p-3 text-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-slate-800">{item.description}</p>
+                    <p className="text-slate-500">{item.category} · vence {item.due_date} · faltan {item.days_until_due} día(s)</p>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{formatCurrency(item.amount)}</span>
+                </div>
+                <p className="mt-2 text-xs text-slate-600">
+                  Reserva recomendada: {formatCurrency(item.recommended_weekly_saving)} por semana o {formatCurrency(item.recommended_monthly_saving)} por mes
+                </p>
+              </article>
+            ))
+          ) : (
+            <p className="text-sm text-slate-500">No hay gastos próximos que requieran alerta por ahora.</p>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">

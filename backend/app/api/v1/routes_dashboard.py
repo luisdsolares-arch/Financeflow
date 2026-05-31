@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import date, datetime
+from math import ceil
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -6,11 +7,19 @@ from sqlalchemy.orm import Session
 from app.api.v1.deps import get_current_user
 from app.db.session import get_db
 from app.models.bank_account import BankAccount
+from app.models.planned_expense import PlannedExpense
 from app.models.transaction import Transaction
 from app.models.user import User
 
 
 router = APIRouter()
+
+
+def _planned_savings_metrics(amount: float, due_date: date) -> tuple[float, float, int]:
+    days_until_due = max((due_date - date.today()).days, 0)
+    weekly_periods = max(ceil(max(days_until_due, 1) / 7), 1)
+    monthly_periods = max(ceil(max(days_until_due, 1) / 30), 1)
+    return round(amount / weekly_periods, 2), round(amount / monthly_periods, 2), days_until_due
 
 
 @router.get("/summary")
@@ -34,6 +43,33 @@ def get_dashboard_summary(db: Session = Depends(get_db), current_user: User = De
         if tx.type == "expense":
             by_category[tx.category] = by_category.get(tx.category, 0) + abs(tx.amount)
 
+    planned_rows = (
+        db.query(PlannedExpense)
+        .filter(PlannedExpense.user_id == current_user.id, PlannedExpense.is_active.is_(True))
+        .order_by(PlannedExpense.due_date.asc())
+        .all()
+    )
+
+    upcoming_planned_expenses = []
+    projected_monthly_reserve = 0.0
+    for row in planned_rows:
+        weekly_saving, monthly_saving, days_until_due = _planned_savings_metrics(row.amount, row.due_date)
+        projected_monthly_reserve += monthly_saving
+        if days_until_due <= max(row.reminder_days_before, 14):
+            upcoming_planned_expenses.append(
+                {
+                    "id": row.id,
+                    "description": row.description,
+                    "category": row.category,
+                    "amount": row.amount,
+                    "due_date": row.due_date.isoformat(),
+                    "days_until_due": days_until_due,
+                    "recurrence_type": row.recurrence_type,
+                    "recommended_weekly_saving": weekly_saving,
+                    "recommended_monthly_saving": monthly_saving,
+                }
+            )
+
     return {
         "net_balance": round(net_balance, 2),
         "monthly_income": round(income, 2),
@@ -50,4 +86,6 @@ def get_dashboard_summary(db: Session = Depends(get_db), current_user: User = De
             }
             for t in sorted(monthly, key=lambda x: x.date, reverse=True)[:10]
         ],
+        "projected_monthly_reserve": round(projected_monthly_reserve, 2),
+        "upcoming_planned_expenses": upcoming_planned_expenses[:5],
     }

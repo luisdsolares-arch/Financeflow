@@ -1,4 +1,5 @@
-from datetime import date
+from calendar import monthrange
+from datetime import date, datetime, timedelta, timezone
 from math import ceil
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -34,6 +35,20 @@ def _serialize_planned_expense(row: PlannedExpense) -> PlannedExpenseResponse:
         recommended_weekly_saving=round(row.amount / weekly_periods, 2),
         recommended_monthly_saving=round(row.amount / monthly_periods, 2),
     )
+
+
+def _next_due_date(current_due_date: date, recurrence_type: str) -> date:
+    if recurrence_type == "weekly":
+        return current_due_date + timedelta(days=7)
+    if recurrence_type == "monthly":
+        target_month = current_due_date.month + 1
+        target_year = current_due_date.year
+        if target_month > 12:
+            target_month = 1
+            target_year += 1
+        last_day = monthrange(target_year, target_month)[1]
+        return date(target_year, target_month, min(current_due_date.day, last_day))
+    return current_due_date
 
 
 @router.get("")
@@ -88,9 +103,40 @@ def create_planned_expense(payload: PlannedExpenseCreate, db: Session = Depends(
         planning_mode=payload.planning_mode,
         reminder_days_before=payload.reminder_days_before,
         is_active=True,
-        created_at=date.today(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(row)
     db.commit()
     db.refresh(row)
     return _serialize_planned_expense(row)
+
+
+@router.patch("/planned/{planned_expense_id}/mark-paid")
+def mark_planned_expense_paid(planned_expense_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    row = db.get(PlannedExpense, planned_expense_id)
+    if not row or row.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Gasto planificado no encontrado")
+
+    if not row.is_active:
+        return {
+            "message": "Este gasto planificado ya estaba cerrado",
+            "planned_expense": _serialize_planned_expense(row).model_dump(),
+        }
+
+    if row.recurrence_type == "one_time":
+        row.is_active = False
+        db.commit()
+        db.refresh(row)
+        return {
+            "message": "Gasto puntual marcado como pagado",
+            "planned_expense": _serialize_planned_expense(row).model_dump(),
+        }
+
+    base_date = row.due_date if row.due_date >= date.today() else date.today()
+    row.due_date = _next_due_date(base_date, row.recurrence_type)
+    db.commit()
+    db.refresh(row)
+    return {
+        "message": "Gasto recurrente actualizado al próximo vencimiento",
+        "planned_expense": _serialize_planned_expense(row).model_dump(),
+    }

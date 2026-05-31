@@ -3,6 +3,7 @@ export const fallbackSummary = {
   monthly_income: 4200,
   monthly_expenses: 2810,
   saving_capacity_pct: 33.1,
+  projected_monthly_reserve: 240,
   expenses_by_category: {
     Vivienda: 1100,
     Comida: 450,
@@ -14,6 +15,19 @@ export const fallbackSummary = {
     { date: "2026-05-29", concept: "Nomina", category: "Salario", type: "income", amount: 3500 },
     { date: "2026-05-28", concept: "STARBUCKS COFFEE CA", category: "Comida", type: "expense", amount: 14.9 },
     { date: "2026-05-27", concept: "Renta apartamento", category: "Vivienda", type: "expense", amount: 1100 },
+  ],
+  upcoming_planned_expenses: [
+    {
+      id: 1,
+      description: "Seguro del coche",
+      category: "Transporte",
+      amount: 600,
+      due_date: "2026-06-20",
+      days_until_due: 20,
+      recurrence_type: "monthly",
+      recommended_weekly_saving: 150,
+      recommended_monthly_saving: 300,
+    },
   ],
 };
 

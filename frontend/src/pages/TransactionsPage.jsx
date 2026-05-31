@@ -61,6 +61,18 @@ export default function TransactionsPage() {
     }
   };
 
+  const markAsPaid = async (plannedExpenseId) => {
+    setStatus("");
+    try {
+      const { data } = await api.patch(`/transactions/planned/${plannedExpenseId}/mark-paid`);
+      setStatus(data?.message || "Gasto planificado actualizado.");
+      loadData();
+    } catch (error) {
+      const detail = error?.response?.data?.detail;
+      setStatus(typeof detail === "string" && detail.trim() ? detail : "No se pudo actualizar el gasto planificado.");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="panel p-5">
@@ -140,6 +152,11 @@ export default function TransactionsPage() {
                   <p>Faltan: <span className="font-semibold text-slate-800">{item.days_until_due} día(s)</span></p>
                   <p>Reserva semanal: <span className="font-semibold text-emerald-700">{formatCurrency(item.recommended_weekly_saving)}</span></p>
                   <p>Reserva mensual: <span className="font-semibold text-emerald-700">{formatCurrency(item.recommended_monthly_saving)}</span></p>
+                </div>
+                <div className="mt-3 flex justify-end">
+                  <button onClick={() => markAsPaid(item.id)} className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500">
+                    Marcar como pagado
+                  </button>
                 </div>
               </article>
             )) : <p className="text-sm text-slate-500">Aún no tienes gastos planificados. Crea uno para recibir un recordatorio y una meta de ahorro.</p>}
