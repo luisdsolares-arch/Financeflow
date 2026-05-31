@@ -61,6 +61,22 @@ export default function TransactionsPage() {
     }
   };
 
+  const exportCsv = async () => {
+    try {
+      const response = await api.get("/transactions/export", { responseType: "blob" });
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data], { type: "text/csv;charset=utf-8;" }));
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.setAttribute("download", "transacciones.csv");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch {
+      setStatus("No se pudo exportar el CSV de transacciones.");
+    }
+  };
+
   const markAsPaid = async (plannedExpenseId) => {
     setStatus("");
     try {
@@ -76,8 +92,13 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-4">
       <div className="panel p-5">
-        <h2 className="text-lg font-semibold text-slate-800">Transacciones</h2>
-        <p className="mt-1 text-sm text-slate-500">Registra gastos puntuales o recurrentes y prepara el dinero antes de la fecha de pago.</p>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800">Transacciones</h2>
+            <p className="mt-1 text-sm text-slate-500">Registra gastos puntuales o recurrentes y prepara el dinero antes de la fecha de pago.</p>
+          </div>
+          <button onClick={exportCsv} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100">Exportar CSV</button>
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">

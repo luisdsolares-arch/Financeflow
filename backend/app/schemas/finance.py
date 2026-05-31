@@ -39,6 +39,19 @@ class PlannedExpenseResponse(BaseModel):
     recommended_monthly_saving: float
 
 
+class FinancialGoalCreate(BaseModel):
+    title: str = Field(min_length=2, max_length=120)
+    target_amount: float = Field(gt=0)
+    current_amount: float = Field(ge=0, default=0)
+    target_date: date
+    priority: str = Field(pattern="^(low|medium|high)$", default="medium")
+
+
+class FinancialGoalUpdate(BaseModel):
+    current_amount: float = Field(ge=0)
+    is_active: bool = True
+
+
 class BudgetCreate(BaseModel):
     category: str
     limit_amount: float = Field(gt=0)

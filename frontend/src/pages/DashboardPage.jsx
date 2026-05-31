@@ -50,6 +50,8 @@ const readCachedSummary = () => {
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState(() => readCachedSummary());
+  const [goals, setGoals] = useState([]);
+  const [whatIf, setWhatIf] = useState({ incomeDeltaPct: 0, expensesDeltaPct: 0 });
 
   useEffect(() => {
     api
@@ -62,6 +64,11 @@ export default function DashboardPage() {
       .catch(() => {
         setSummary(readCachedSummary());
       });
+
+    api
+      .get("/goals")
+      .then((res) => setGoals(res.data || []))
+      .catch(() => setGoals([]));
   }, []);
 
   const categoryData = Object.entries(summary.expenses_by_category || {}).map(([name, value]) => ({ name, value }));
@@ -72,6 +79,10 @@ export default function DashboardPage() {
     { month: "Abr", balance: 12100 },
     { month: "May", balance: summary.net_balance },
   ];
+
+  const simulatedIncome = summary.monthly_income * (1 + Number(whatIf.incomeDeltaPct || 0) / 100);
+  const simulatedExpenses = summary.monthly_expenses * (1 + Number(whatIf.expensesDeltaPct || 0) / 100);
+  const simulatedCapacity = simulatedIncome > 0 ? (((simulatedIncome - simulatedExpenses) / simulatedIncome) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -144,6 +155,43 @@ export default function DashboardPage() {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="panel p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-slate-700">Simulador "Qué pasa si"</h2>
+          <label className="block text-sm text-slate-600">
+            Variación de ingresos (%)
+            <input className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" type="number" value={whatIf.incomeDeltaPct} onChange={(event) => setWhatIf((prev) => ({ ...prev, incomeDeltaPct: event.target.value }))} />
+          </label>
+          <label className="block text-sm text-slate-600">
+            Variación de gastos (%)
+            <input className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" type="number" value={whatIf.expensesDeltaPct} onChange={(event) => setWhatIf((prev) => ({ ...prev, expensesDeltaPct: event.target.value }))} />
+          </label>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+            <p>Ingreso simulado: <span className="font-semibold">{formatCurrency(simulatedIncome)}</span></p>
+            <p>Gasto simulado: <span className="font-semibold">{formatCurrency(simulatedExpenses)}</span></p>
+            <p>Capacidad de ahorro simulada: <span className="font-semibold text-emerald-700">{simulatedCapacity.toFixed(2)}%</span></p>
+          </div>
+        </div>
+
+        <div className="panel p-5">
+          <h2 className="text-sm font-semibold text-slate-700">Progreso de Metas</h2>
+          <div className="mt-3 space-y-2">
+            {goals.length ? goals.slice(0, 4).map((goal) => (
+              <article key={goal.id} className="rounded-xl border border-slate-200 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold text-slate-800">{goal.title}</p>
+                  <span className="text-xs font-semibold text-slate-600">{goal.progress_pct}%</span>
+                </div>
+                <div className="mt-2 h-2 w-full rounded-full bg-slate-100">
+                  <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${Math.min(goal.progress_pct, 100)}%` }} />
+                </div>
+                <p className="mt-2 text-xs text-slate-500">Meta {goal.target_date} · recomendado/mes {formatCurrency(goal.monthly_required)}</p>
+              </article>
+            )) : <p className="text-sm text-slate-500">Sin metas aún. Crea una en la pestaña Metas.</p>}
           </div>
         </div>
       </div>

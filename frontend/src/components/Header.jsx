@@ -37,6 +37,18 @@ const QUICK_ACTIONS = [
     keywords: ["pagos", "reglas", "recordatorios", "notificaciones"],
   },
   {
+    title: "Metas",
+    description: "Objetivos de ahorro y progreso",
+    to: "/app/goals",
+    keywords: ["metas", "objetivos", "ahorro", "planificacion"],
+  },
+  {
+    title: "Alertas",
+    description: "Centro de notificaciones",
+    to: "/app/notifications",
+    keywords: ["alertas", "notificaciones", "recordatorios"],
+  },
+  {
     title: "Configuración",
     description: "Perfil, seguridad y preferencias",
     to: "/app/settings",
@@ -142,9 +154,8 @@ export default function Header() {
 
     const loadUnreadNotifications = async () => {
       try {
-        const { data } = await api.get("/payments/notifications");
-        const unread = Array.isArray(data) ? data.filter((item) => !item.is_read).length : 0;
-        setUnreadCount(unread);
+        const { data } = await api.get("/notifications");
+        setUnreadCount(Number(data?.unread_count || 0));
       } catch (error) {
         if (error?.response?.status === 401 && intervalId) {
           window.clearInterval(intervalId);

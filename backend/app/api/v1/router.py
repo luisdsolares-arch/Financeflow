@@ -5,6 +5,8 @@ from app.api.v1 import (
 	routes_bank,
 	routes_budget,
 	routes_dashboard,
+	routes_goals,
+	routes_notifications,
 	routes_payments,
 	routes_settings,
 	routes_suggestions,
@@ -21,3 +23,5 @@ api_router.include_router(routes_suggestions.router, prefix="/suggestions", tags
 api_router.include_router(routes_bank.router, prefix="/bank", tags=["Open Banking"])
 api_router.include_router(routes_payments.router, prefix="/payments", tags=["Payments Assistant"])
 api_router.include_router(routes_settings.router, prefix="/settings", tags=["Settings"])
+api_router.include_router(routes_goals.router, prefix="/goals", tags=["Goals"])
+api_router.include_router(routes_notifications.router, prefix="/notifications", tags=["Notifications"])

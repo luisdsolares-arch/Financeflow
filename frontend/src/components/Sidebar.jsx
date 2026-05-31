@@ -1,4 +1,4 @@
-import { LayoutDashboard, ArrowLeftRight, PiggyBank, Lightbulb, Settings, Bot } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, PiggyBank, Lightbulb, Settings, Bot, Target, BellRing } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 const links = [
@@ -7,6 +7,8 @@ const links = [
   { to: "/app/budgets", icon: PiggyBank, label: "Presupuestos", short: "Presup." },
   { to: "/app/suggestions", icon: Lightbulb, label: "Consejos", short: "Tips" },
   { to: "/app/payments", icon: Bot, label: "Gestor de Pagos", short: "Pagos" },
+  { to: "/app/goals", icon: Target, label: "Metas", short: "Metas" },
+  { to: "/app/notifications", icon: BellRing, label: "Alertas", short: "Alertas" },
   { to: "/app/settings", icon: Settings, label: "Configuración", short: "Ajustes" },
 ];
 
@@ -41,7 +43,7 @@ export default function Sidebar() {
 
       <nav className="mobile-tabbar fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-1 backdrop-blur lg:hidden">
         <div className="mx-auto grid max-w-md grid-cols-5">
-          {links.slice(0, 5).map((item) => {
+          {[links[0], links[1], links[2], links[5], links[7]].map((item) => {
             const Icon = item.icon;
             return (
               <NavLink

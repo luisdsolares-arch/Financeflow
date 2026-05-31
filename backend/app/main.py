@@ -11,7 +11,7 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
-from app.models import bank_account, budget, planned_expense, transaction, user, user_settings  # noqa: F401
+from app.models import bank_account, budget, financial_goal, planned_expense, transaction, user, user_settings  # noqa: F401
 
 
 app = FastAPI(

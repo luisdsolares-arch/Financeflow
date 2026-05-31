@@ -16,5 +16,6 @@ class User(Base):
     budgets: Mapped[list["Budget"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     auto_payments: Mapped[list["AutoPayment"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     planned_expenses: Mapped[list["PlannedExpense"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    financial_goals: Mapped[list["FinancialGoal"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     payment_notifications: Mapped[list["PaymentNotification"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     settings: Mapped["UserSettings | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)

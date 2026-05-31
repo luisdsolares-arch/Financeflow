@@ -4,6 +4,8 @@ import AuthPage from "./pages/AuthPage";
 import BudgetsPage from "./pages/BudgetsPage";
 import ConnectionSettingsPage from "./pages/ConnectionSettingsPage";
 import DashboardPage from "./pages/DashboardPage";
+import GoalsPage from "./pages/GoalsPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import PaymentsPage from "./pages/PaymentsPage";
 import RegisterPage from "./pages/RegisterPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -34,6 +36,8 @@ export default function App() {
         <Route path="budgets" element={<BudgetsPage />} />
         <Route path="suggestions" element={<SuggestionsPage />} />
         <Route path="payments" element={<PaymentsPage />} />
+        <Route path="goals" element={<GoalsPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/auth" replace />} />

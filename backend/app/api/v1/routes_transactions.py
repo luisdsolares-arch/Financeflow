@@ -1,8 +1,11 @@
 from calendar import monthrange
 from datetime import date, datetime, timedelta, timezone
+import csv
+import io
 from math import ceil
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_user
@@ -62,6 +65,30 @@ def list_transactions(db: Session = Depends(get_db), current_user: User = Depend
         .all()
     )
     return rows
+
+
+@router.get("/export")
+def export_transactions_csv(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    rows = (
+        db.query(Transaction)
+        .join(BankAccount, BankAccount.id == Transaction.account_id)
+        .filter(BankAccount.user_id == current_user.id)
+        .order_by(Transaction.date.desc())
+        .all()
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["fecha", "descripcion", "categoria", "tipo", "monto", "automatica"])
+    for row in rows:
+        writer.writerow([row.date.isoformat(), row.description, row.category, row.type, row.amount, row.is_automated])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=transacciones.csv"},
+    )
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
