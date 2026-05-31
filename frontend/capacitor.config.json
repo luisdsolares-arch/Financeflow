@@ -3,6 +3,8 @@
   "appName": "FinanceFlow",
   "webDir": "dist",
   "server": {
-    "cleartext": true
+    "cleartext": false,
+    "hostname": "localhost",
+    "androidScheme": "https"
   }
 }
