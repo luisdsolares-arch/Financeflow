@@ -1,7 +1,4 @@
 services:
-  - type: web
+  - type: static
     name: financeflow
-    env: python
-    plan: free
-    buildCommand: ""
-    startCommand: python -m http.server $PORT
+    staticPublishPath: .
