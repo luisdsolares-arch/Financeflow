@@ -14,6 +14,14 @@ class TransactionCreate(BaseModel):
     is_automated: bool = False
 
 
+class TransactionUpdate(BaseModel):
+    amount: float
+    date: date
+    description: str = Field(min_length=2, max_length=255)
+    category: str = Field(min_length=2, max_length=80)
+    type: str = Field(pattern="^(income|expense)$")
+
+
 class PlannedExpenseCreate(BaseModel):
     description: str = Field(min_length=2, max_length=255)
     category: str = Field(min_length=2, max_length=80)
@@ -22,6 +30,17 @@ class PlannedExpenseCreate(BaseModel):
     recurrence_type: str = Field(pattern="^(one_time|weekly|monthly)$")
     planning_mode: str = Field(pattern="^(weekly|monthly)$")
     reminder_days_before: int = Field(ge=1, le=60, default=7)
+
+
+class PlannedExpenseUpdate(BaseModel):
+    description: str = Field(min_length=2, max_length=255)
+    category: str = Field(min_length=2, max_length=80)
+    amount: float = Field(gt=0)
+    due_date: date
+    recurrence_type: str = Field(pattern="^(one_time|weekly|monthly)$")
+    planning_mode: str = Field(pattern="^(weekly|monthly)$")
+    reminder_days_before: int = Field(ge=1, le=60, default=7)
+    is_active: bool = True
 
 
 class PlannedExpenseResponse(BaseModel):
@@ -49,6 +68,15 @@ class FinancialGoalCreate(BaseModel):
 
 class FinancialGoalUpdate(BaseModel):
     current_amount: float = Field(ge=0)
+    is_active: bool = True
+
+
+class FinancialGoalEdit(BaseModel):
+    title: str = Field(min_length=2, max_length=120)
+    target_amount: float = Field(gt=0)
+    current_amount: float = Field(ge=0, default=0)
+    target_date: date
+    priority: str = Field(pattern="^(low|medium|high)$", default="medium")
     is_active: bool = True
 
 

@@ -6,6 +6,7 @@ export default function TransactionsPage() {
   const [rows, setRows] = useState([]);
   const [plannedExpenses, setPlannedExpenses] = useState([]);
   const [status, setStatus] = useState("");
+  const [editingPlannedId, setEditingPlannedId] = useState(null);
   const [form, setForm] = useState({
     description: "Seguro del coche",
     category: "Transporte",
@@ -39,25 +40,122 @@ export default function TransactionsPage() {
     setStatus("");
 
     try {
-      const { data } = await api.post("/transactions/planned", {
+      const payload = {
         ...form,
         amount: Number(form.amount),
         reminder_days_before: Number(form.reminder_days_before),
-      });
+      };
+      const { data } = editingPlannedId
+        ? await api.put(`/transactions/planned/${editingPlannedId}`, payload)
+        : await api.post("/transactions/planned", payload);
       setStatus(
-        `Gasto ${data.recurrence_type === "one_time" ? "puntual" : "recurrente"} guardado. Reserva ${
+        `Gasto ${data.recurrence_type === "one_time" ? "puntual" : "recurrente"} ${editingPlannedId ? "actualizado" : "guardado"}. Reserva ${
           data.planning_mode === "weekly" ? formatCurrency(data.recommended_weekly_saving) + " por semana" : formatCurrency(data.recommended_monthly_saving) + " por mes"
         } hasta ${data.due_date}.`
       );
       setForm((prev) => ({
         ...prev,
+        description: "Seguro del coche",
+        category: "Transporte",
         amount: 250,
         due_date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString().slice(0, 10),
+        recurrence_type: "one_time",
+        planning_mode: "monthly",
+        reminder_days_before: 7,
       }));
+      setEditingPlannedId(null);
       loadData();
     } catch (error) {
       const detail = error?.response?.data?.detail;
       setStatus(typeof detail === "string" && detail.trim() ? detail : "No se pudo guardar el gasto planificado.");
+    }
+  };
+
+  const startEditPlannedExpense = (item) => {
+    setEditingPlannedId(item.id);
+    setForm({
+      description: item.description,
+      category: item.category,
+      amount: item.amount,
+      due_date: item.due_date,
+      recurrence_type: item.recurrence_type,
+      planning_mode: item.planning_mode,
+      reminder_days_before: item.reminder_days_before,
+    });
+    setStatus("Editando gasto planificado. Ajusta los campos y guarda.");
+  };
+
+  const cancelEditPlannedExpense = () => {
+    setEditingPlannedId(null);
+    setForm({
+      description: "Seguro del coche",
+      category: "Transporte",
+      amount: 250,
+      due_date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString().slice(0, 10),
+      recurrence_type: "one_time",
+      planning_mode: "monthly",
+      reminder_days_before: 7,
+    });
+    setStatus("Edición cancelada.");
+  };
+
+  const deletePlannedExpense = async (plannedExpenseId) => {
+    if (!window.confirm("¿Seguro que quieres eliminar este gasto planificado?")) {
+      return;
+    }
+    setStatus("");
+    try {
+      await api.delete(`/transactions/planned/${plannedExpenseId}`);
+      if (editingPlannedId === plannedExpenseId) {
+        cancelEditPlannedExpense();
+      }
+      setStatus("Gasto planificado eliminado.");
+      loadData();
+    } catch (error) {
+      const detail = error?.response?.data?.detail;
+      setStatus(typeof detail === "string" && detail.trim() ? detail : "No se pudo eliminar el gasto planificado.");
+    }
+  };
+
+  const editTransaction = async (row) => {
+    const description = window.prompt("Descripción", row.description);
+    if (description === null) return;
+    const category = window.prompt("Categoría", row.category);
+    if (category === null) return;
+    const amount = window.prompt("Monto", String(row.amount));
+    if (amount === null) return;
+    const txType = window.prompt("Tipo (income|expense)", row.type);
+    if (txType === null) return;
+    const txDate = window.prompt("Fecha (YYYY-MM-DD)", row.date);
+    if (txDate === null) return;
+
+    try {
+      await api.put(`/transactions/${row.id}`, {
+        description: description.trim(),
+        category: category.trim(),
+        amount: Number(amount),
+        type: txType.trim(),
+        date: txDate.trim(),
+      });
+      setStatus("Movimiento actualizado.");
+      loadData();
+    } catch (error) {
+      const detail = error?.response?.data?.detail;
+      setStatus(typeof detail === "string" && detail.trim() ? detail : "No se pudo actualizar el movimiento.");
+    }
+  };
+
+  const deleteTransaction = async (transactionId) => {
+    if (!window.confirm("¿Eliminar este movimiento?")) {
+      return;
+    }
+    try {
+      await api.delete(`/transactions/${transactionId}`);
+      setStatus("Movimiento eliminado.");
+      loadData();
+    } catch (error) {
+      const detail = error?.response?.data?.detail;
+      setStatus(typeof detail === "string" && detail.trim() ? detail : "No se pudo eliminar el movimiento.");
     }
   };
 
@@ -104,7 +202,7 @@ export default function TransactionsPage() {
       <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
         <form className="panel space-y-4 p-4 sm:p-5 lg:p-6" onSubmit={savePlannedExpense}>
           <div>
-            <h3 className="text-sm font-semibold text-slate-700">Planificar gasto</h3>
+            <h3 className="text-sm font-semibold text-slate-700">{editingPlannedId ? "Editar gasto planificado" : "Planificar gasto"}</h3>
             <p className="mt-1 text-sm text-slate-500">Elige si el gasto es puntual o recurrente. La app te dirá cuánto reservar cada semana o mes.</p>
           </div>
 
@@ -152,7 +250,14 @@ export default function TransactionsPage() {
             </label>
           </div>
 
-          <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Guardar gasto planificado</button>
+          <div className="flex flex-wrap gap-2">
+            <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">{editingPlannedId ? "Actualizar gasto" : "Guardar gasto planificado"}</button>
+            {editingPlannedId ? (
+              <button type="button" onClick={cancelEditPlannedExpense} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">
+                Cancelar edición
+              </button>
+            ) : null}
+          </div>
           {status ? <p className="text-sm text-slate-600">{status}</p> : null}
         </form>
 
@@ -174,7 +279,13 @@ export default function TransactionsPage() {
                   <p>Reserva semanal: <span className="font-semibold text-emerald-700">{formatCurrency(item.recommended_weekly_saving)}</span></p>
                   <p>Reserva mensual: <span className="font-semibold text-emerald-700">{formatCurrency(item.recommended_monthly_saving)}</span></p>
                 </div>
-                <div className="mt-3 flex justify-end">
+                <div className="mt-3 flex flex-wrap justify-end gap-2">
+                  <button onClick={() => startEditPlannedExpense(item)} className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 sm:text-sm">
+                    Editar
+                  </button>
+                  <button onClick={() => deletePlannedExpense(item.id)} className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 sm:text-sm">
+                    Eliminar
+                  </button>
                   <button onClick={() => markAsPaid(item.id)} className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 sm:text-sm">
                     Marcar como pagado
                   </button>
@@ -196,6 +307,7 @@ export default function TransactionsPage() {
                 <th className="pb-2">Categoria</th>
                 <th className="pb-2">Tipo</th>
                 <th className="pb-2 text-right">Monto</th>
+                <th className="pb-2 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -206,6 +318,16 @@ export default function TransactionsPage() {
                   <td>{row.category}</td>
                   <td>{row.type}</td>
                   <td className="text-right">{formatCurrency(row.amount)}</td>
+                  <td className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <button type="button" onClick={() => editTransaction(row)} className="rounded-lg border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 sm:text-xs">
+                        Editar
+                      </button>
+                      <button type="button" onClick={() => deleteTransaction(row.id)} className="rounded-lg border border-rose-300 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 sm:text-xs">
+                        Eliminar
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

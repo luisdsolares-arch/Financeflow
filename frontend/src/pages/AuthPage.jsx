@@ -2,7 +2,7 @@ import { Eye, EyeOff, Fingerprint } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
-import { authenticateWithBiometric, getBiometricSessionToken, isBiometricEnabled, isBiometricSupported, saveBiometricSessionToken } from "../services/biometrics";
+import { authenticateWithBiometric, getBiometricAvailability, getBiometricSessionToken, isBiometricEnabled, saveBiometricSessionToken } from "../services/biometrics";
 import { getApiBaseUrl, setApiBaseUrl } from "../services/api";
 import { recordActivity, unlockSession } from "../services/securityLock";
 
@@ -15,14 +15,27 @@ export default function AuthPage() {
   const [showRepairConnection, setShowRepairConnection] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricReason, setBiometricReason] = useState("");
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [logoTapCount, setLogoTapCount] = useState(0);
   const [lastLogoTap, setLastLogoTap] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
-    setBiometricAvailable(isBiometricSupported());
-    setBiometricEnabled(isBiometricEnabled());
+    let active = true;
+    const loadBiometricState = async () => {
+      const availability = await getBiometricAvailability();
+      if (!active) {
+        return;
+      }
+      setBiometricAvailable(availability.supported);
+      setBiometricReason(availability.reason || "");
+      setBiometricEnabled(isBiometricEnabled());
+    };
+    void loadBiometricState();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const onSubmit = async (event) => {
@@ -166,6 +179,8 @@ export default function AuthPage() {
               {biometricLoading ? "Verificando biometría..." : "Entrar con biometría"}
             </button>
           ) : null}
+
+          {!biometricAvailable ? <p className="text-xs text-slate-500">{biometricReason || "Biometría no disponible en este dispositivo."}</p> : null}
         </form>
       </div>
     </div>

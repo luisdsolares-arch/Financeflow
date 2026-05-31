@@ -1,7 +1,16 @@
+import { Capacitor } from "@capacitor/core";
+import { BiometricAuth } from "@aparajita/capacitor-biometric-auth";
+
 const BIOMETRIC_ENABLED_KEY = "financeflow.biometric.enabled";
 const BIOMETRIC_CREDENTIAL_ID_KEY = "financeflow.biometric.credentialId";
 const BIOMETRIC_EMAIL_KEY = "financeflow.biometric.email";
 const BIOMETRIC_TOKEN_KEY = "financeflow.biometric.token";
+const BIOMETRIC_NATIVE_KEY = "financeflow.biometric.native";
+
+const isNativePlatform = () => {
+  const platform = Capacitor.getPlatform();
+  return platform === "android" || platform === "ios";
+};
 
 const toBase64Url = (bytes) => {
   const binary = String.fromCharCode(...bytes);
@@ -25,7 +34,33 @@ const randomChallenge = () => {
 };
 
 export const isBiometricSupported = () => {
+  if (isNativePlatform()) {
+    return true;
+  }
   return Boolean(window.PublicKeyCredential) && window.isSecureContext;
+};
+
+export const getBiometricAvailability = async () => {
+  if (isNativePlatform()) {
+    try {
+      const info = await BiometricAuth.checkBiometry();
+      return {
+        supported: Boolean(info.isAvailable || info.deviceIsSecure),
+        reason: info.reason || "",
+      };
+    } catch {
+      return {
+        supported: false,
+        reason: "La biometría nativa no está disponible en este dispositivo.",
+      };
+    }
+  }
+
+  const supported = Boolean(window.PublicKeyCredential) && window.isSecureContext;
+  return {
+    supported,
+    reason: supported ? "" : "El navegador no permite biometría WebAuthn en este contexto.",
+  };
 };
 
 export const isBiometricEnabled = () => {
@@ -46,16 +81,34 @@ export const clearBiometricConfig = () => {
   localStorage.removeItem(BIOMETRIC_CREDENTIAL_ID_KEY);
   localStorage.removeItem(BIOMETRIC_EMAIL_KEY);
   localStorage.removeItem(BIOMETRIC_TOKEN_KEY);
+  localStorage.removeItem(BIOMETRIC_NATIVE_KEY);
 };
 
 export const enableBiometricLogin = async (email) => {
-  if (!isBiometricSupported()) {
-    throw new Error("Este dispositivo no soporta biometría web.");
-  }
-
   const normalizedEmail = (email || "").trim().toLowerCase();
   if (!normalizedEmail) {
     throw new Error("Debes definir un correo antes de activar biometría.");
+  }
+
+  const availability = await getBiometricAvailability();
+  if (!availability.supported) {
+    throw new Error(availability.reason || "Este dispositivo no soporta biometría.");
+  }
+
+  if (isNativePlatform()) {
+    // On native platforms we trust the OS prompt and keep a simple local flag.
+    await BiometricAuth.authenticate({
+      reason: "Activa biometría para ingresar a FinanceFlow",
+      androidTitle: "Activar biometría",
+      androidSubtitle: "Confirma tu identidad",
+      allowDeviceCredential: true,
+      androidConfirmationRequired: false,
+    });
+
+    localStorage.setItem(BIOMETRIC_EMAIL_KEY, normalizedEmail);
+    localStorage.setItem(BIOMETRIC_ENABLED_KEY, "true");
+    localStorage.setItem(BIOMETRIC_NATIVE_KEY, "true");
+    return;
   }
 
   const userBytes = new TextEncoder().encode(normalizedEmail.slice(0, 64));
@@ -92,11 +145,28 @@ export const enableBiometricLogin = async (email) => {
   localStorage.setItem(BIOMETRIC_CREDENTIAL_ID_KEY, credentialId);
   localStorage.setItem(BIOMETRIC_EMAIL_KEY, normalizedEmail);
   localStorage.setItem(BIOMETRIC_ENABLED_KEY, "true");
+  localStorage.setItem(BIOMETRIC_NATIVE_KEY, "false");
 };
 
 export const authenticateWithBiometric = async () => {
-  if (!isBiometricSupported()) {
-    throw new Error("Este dispositivo no soporta biometría web.");
+  const availability = await getBiometricAvailability();
+  if (!availability.supported) {
+    throw new Error(availability.reason || "Este dispositivo no soporta biometría.");
+  }
+
+  if (isNativePlatform()) {
+    if (!isBiometricEnabled()) {
+      throw new Error("La biometría no está configurada en este dispositivo.");
+    }
+
+    await BiometricAuth.authenticate({
+      reason: "Confirma tu identidad para continuar",
+      androidTitle: "Ingreso biométrico",
+      androidSubtitle: "Accede a tu cuenta",
+      allowDeviceCredential: true,
+      androidConfirmationRequired: false,
+    });
+    return true;
   }
 
   const credentialId = localStorage.getItem(BIOMETRIC_CREDENTIAL_ID_KEY);

@@ -5,6 +5,7 @@ import { formatCurrency } from "../services/currency";
 export default function GoalsPage() {
   const [goals, setGoals] = useState([]);
   const [status, setStatus] = useState("");
+  const [editingGoalId, setEditingGoalId] = useState(null);
   const [form, setForm] = useState({
     title: "Fondo de emergencia",
     target_amount: 5000,
@@ -31,17 +32,54 @@ export default function GoalsPage() {
     event.preventDefault();
     setStatus("");
     try {
-      await api.post("/goals", {
+      const payload = {
         ...form,
         target_amount: Number(form.target_amount),
         current_amount: Number(form.current_amount),
+      };
+      if (editingGoalId) {
+        await api.put(`/goals/${editingGoalId}`, { ...payload, is_active: true });
+      } else {
+        await api.post("/goals", payload);
+      }
+      setStatus(editingGoalId ? "Meta actualizada correctamente." : "Meta creada correctamente.");
+      setEditingGoalId(null);
+      setForm({
+        title: "Fondo de emergencia",
+        target_amount: 5000,
+        current_amount: 500,
+        target_date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 180).toISOString().slice(0, 10),
+        priority: "high",
       });
-      setStatus("Meta creada correctamente.");
       loadGoals();
     } catch (error) {
       const detail = error?.response?.data?.detail;
-      setStatus(typeof detail === "string" ? detail : "No se pudo crear la meta.");
+      setStatus(typeof detail === "string" ? detail : "No se pudo guardar la meta.");
     }
+  };
+
+  const startEditGoal = (goal) => {
+    setEditingGoalId(goal.id);
+    setForm({
+      title: goal.title,
+      target_amount: goal.target_amount,
+      current_amount: goal.current_amount,
+      target_date: goal.target_date,
+      priority: goal.priority,
+    });
+    setStatus("Editando meta. Ajusta los campos y guarda.");
+  };
+
+  const cancelEditGoal = () => {
+    setEditingGoalId(null);
+    setForm({
+      title: "Fondo de emergencia",
+      target_amount: 5000,
+      current_amount: 500,
+      target_date: new Date(Date.now() + 1000 * 60 * 60 * 24 * 180).toISOString().slice(0, 10),
+      priority: "high",
+    });
+    setStatus("Edición cancelada.");
   };
 
   const closeGoal = async (goal) => {
@@ -50,6 +88,22 @@ export default function GoalsPage() {
       loadGoals();
     } catch {
       setStatus("No se pudo cerrar la meta.");
+    }
+  };
+
+  const deleteGoal = async (goalId) => {
+    if (!window.confirm("¿Seguro que quieres eliminar esta meta?")) {
+      return;
+    }
+    try {
+      await api.delete(`/goals/${goalId}`);
+      if (editingGoalId === goalId) {
+        cancelEditGoal();
+      }
+      setStatus("Meta eliminada correctamente.");
+      loadGoals();
+    } catch {
+      setStatus("No se pudo eliminar la meta.");
     }
   };
 
@@ -62,7 +116,7 @@ export default function GoalsPage() {
 
       <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
         <form className="panel space-y-3 p-4 sm:p-5 lg:p-6" onSubmit={createGoal}>
-          <h3 className="text-sm font-semibold text-slate-700">Nueva Meta</h3>
+          <h3 className="text-sm font-semibold text-slate-700">{editingGoalId ? "Editar Meta" : "Nueva Meta"}</h3>
           <input className="w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="Título" value={form.title} onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))} />
           <input className="w-full rounded-xl border border-slate-200 px-3 py-2" type="number" min="1" step="0.01" placeholder="Monto objetivo" value={form.target_amount} onChange={(event) => setForm((prev) => ({ ...prev, target_amount: event.target.value }))} />
           <input className="w-full rounded-xl border border-slate-200 px-3 py-2" type="number" min="0" step="0.01" placeholder="Monto actual" value={form.current_amount} onChange={(event) => setForm((prev) => ({ ...prev, current_amount: event.target.value }))} />
@@ -72,7 +126,14 @@ export default function GoalsPage() {
             <option value="medium">Media prioridad</option>
             <option value="low">Baja prioridad</option>
           </select>
-          <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Guardar meta</button>
+          <div className="flex flex-wrap gap-2">
+            <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">{editingGoalId ? "Actualizar meta" : "Guardar meta"}</button>
+            {editingGoalId ? (
+              <button type="button" onClick={cancelEditGoal} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">
+                Cancelar edición
+              </button>
+            ) : null}
+          </div>
           {status ? <p className="text-sm text-slate-600">{status}</p> : null}
         </form>
 
@@ -98,10 +159,17 @@ export default function GoalsPage() {
                   <p>Recomendado/mes: <span className="font-semibold text-emerald-700">{formatCurrency(goal.monthly_required)}</span></p>
                 </div>
                 {goal.is_active ? (
-                  <div className="mt-2 flex justify-end">
+                  <div className="mt-2 flex flex-wrap justify-end gap-2">
+                    <button onClick={() => startEditGoal(goal)} className="rounded-xl border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 sm:text-sm">Editar</button>
+                    <button onClick={() => deleteGoal(goal.id)} className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100 sm:text-sm">Eliminar</button>
                     <button onClick={() => closeGoal(goal)} className="rounded-xl border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 sm:text-sm">Cerrar meta</button>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="mt-2 flex flex-wrap justify-end gap-2">
+                    <button onClick={() => startEditGoal(goal)} className="rounded-xl border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 sm:text-sm">Editar</button>
+                    <button onClick={() => deleteGoal(goal.id)} className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100 sm:text-sm">Eliminar</button>
+                  </div>
+                )}
               </article>
             )) : <p className="text-sm text-slate-500">Aún no hay metas creadas.</p>}
           </div>

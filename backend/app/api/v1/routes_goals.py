@@ -8,7 +8,7 @@ from app.api.v1.deps import get_current_user
 from app.db.session import get_db
 from app.models.financial_goal import FinancialGoal
 from app.models.user import User
-from app.schemas.finance import FinancialGoalCreate, FinancialGoalUpdate
+from app.schemas.finance import FinancialGoalCreate, FinancialGoalEdit, FinancialGoalUpdate
 
 
 router = APIRouter()
@@ -78,3 +78,34 @@ def update_goal(goal_id: int, payload: FinancialGoalUpdate, db: Session = Depend
     db.commit()
     db.refresh(row)
     return _serialize_goal(row)
+
+
+@router.put("/{goal_id}")
+def edit_goal(goal_id: int, payload: FinancialGoalEdit, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    row = db.get(FinancialGoal, goal_id)
+    if not row or row.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meta no encontrada")
+
+    if payload.target_date < date.today():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La fecha meta no puede estar en el pasado")
+
+    row.title = payload.title
+    row.target_amount = payload.target_amount
+    row.current_amount = payload.current_amount
+    row.target_date = payload.target_date
+    row.priority = payload.priority
+    row.is_active = payload.is_active
+    db.commit()
+    db.refresh(row)
+    return _serialize_goal(row)
+
+
+@router.delete("/{goal_id}")
+def delete_goal(goal_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    row = db.get(FinancialGoal, goal_id)
+    if not row or row.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meta no encontrada")
+
+    db.delete(row)
+    db.commit()
+    return {"message": "Meta eliminada"}

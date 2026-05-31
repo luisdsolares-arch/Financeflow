@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { getApiBaseUrl, setApiBaseUrl } from "../services/api";
-import { clearBiometricConfig, enableBiometricLogin, isBiometricEnabled, isBiometricSupported } from "../services/biometrics";
+import { clearBiometricConfig, enableBiometricLogin, getBiometricAvailability, isBiometricEnabled } from "../services/biometrics";
 import { clearSessionLockState, disablePin, savePin } from "../services/securityLock";
 
 const SETTINGS_KEY = "financeflow.settings.v1";
@@ -42,6 +42,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState(defaultSettings);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricReason, setBiometricReason] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [pinDraft, setPinDraft] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
@@ -84,9 +85,22 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    setBiometricAvailable(isBiometricSupported());
-    setBiometricEnabled(isBiometricEnabled());
+    let active = true;
+    const loadBiometricState = async () => {
+      const availability = await getBiometricAvailability();
+      if (!active) {
+        return;
+      }
+      setBiometricAvailable(availability.supported);
+      setBiometricReason(availability.reason || "");
+      setBiometricEnabled(isBiometricEnabled());
+    };
+
+    void loadBiometricState();
     setApiBaseUrlInput(getApiBaseUrl());
+    return () => {
+      active = false;
+    };
   }, []);
 
   const updateField = (key, value) => {
@@ -377,7 +391,7 @@ export default function SettingsPage() {
             />
             Activar inicio de sesión biométrico
           </label>
-          {!biometricAvailable ? <p className="text-xs text-slate-500">Biometría no disponible en este navegador/dispositivo.</p> : null}
+          {!biometricAvailable ? <p className="text-xs text-slate-500">{biometricReason || "Biometría no disponible en este navegador/dispositivo."}</p> : null}
         </div>
 
         <div className="panel space-y-4 p-4 sm:p-5 lg:p-6">

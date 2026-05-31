@@ -63,3 +63,44 @@ def test_goals_and_notifications(client):
     refreshed_planned = next((item for item in refreshed.json()["items"] if item["id"] == planned_item["id"]), None)
     assert refreshed_planned is not None
     assert refreshed_planned["is_read"] is True
+
+
+def test_edit_and_delete_goal(client):
+    headers = _auth_headers(client, email="goals-edit@example.com")
+
+    created = client.post(
+        "/api/v1/goals",
+        headers=headers,
+        json={
+            "title": "Portatil nuevo",
+            "target_amount": 1800,
+            "current_amount": 300,
+            "target_date": (date.today() + timedelta(days=150)).isoformat(),
+            "priority": "high",
+        },
+    )
+    assert created.status_code == 201
+    goal_id = created.json()["id"]
+
+    edited = client.put(
+        f"/api/v1/goals/{goal_id}",
+        headers=headers,
+        json={
+            "title": "Portátil nuevo",
+            "target_amount": 2000,
+            "current_amount": 500,
+            "target_date": (date.today() + timedelta(days=180)).isoformat(),
+            "priority": "medium",
+            "is_active": True,
+        },
+    )
+    assert edited.status_code == 200
+    assert edited.json()["title"] == "Portátil nuevo"
+    assert edited.json()["target_amount"] == 2000
+
+    deleted = client.delete(f"/api/v1/goals/{goal_id}", headers=headers)
+    assert deleted.status_code == 200
+
+    listing = client.get("/api/v1/goals", headers=headers)
+    assert listing.status_code == 200
+    assert all(item["id"] != goal_id for item in listing.json())

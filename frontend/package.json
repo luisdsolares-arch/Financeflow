@@ -17,6 +17,7 @@
     "mobile:keystore:create": "cd android && keytool -genkeypair -v -storetype PKCS12 -keystore app/financeflow-release-key.jks -alias financeflow -keyalg RSA -keysize 2048 -validity 10000"
   },
   "dependencies": {
+    "@aparajita/capacitor-biometric-auth": "^10.0.0",
     "@capacitor/android": "^8.3.4",
     "@capacitor/cli": "^8.3.4",
     "@capacitor/core": "^8.3.4",

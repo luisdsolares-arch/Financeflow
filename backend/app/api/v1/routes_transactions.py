@@ -14,7 +14,7 @@ from app.models.bank_account import BankAccount
 from app.models.planned_expense import PlannedExpense
 from app.models.transaction import Transaction
 from app.models.user import User
-from app.schemas.finance import PlannedExpenseCreate, PlannedExpenseResponse, TransactionCreate
+from app.schemas.finance import PlannedExpenseCreate, PlannedExpenseResponse, PlannedExpenseUpdate, TransactionCreate, TransactionUpdate
 
 
 router = APIRouter()
@@ -104,6 +104,41 @@ def create_transaction(payload: TransactionCreate, db: Session = Depends(get_db)
     return tx
 
 
+@router.put("/{transaction_id}")
+def update_transaction(transaction_id: int, payload: TransactionUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    tx = db.get(Transaction, transaction_id)
+    if not tx:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
+
+    account = db.get(BankAccount, tx.account_id)
+    if not account or account.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
+
+    tx.amount = payload.amount
+    tx.date = payload.date
+    tx.description = payload.description
+    tx.category = payload.category
+    tx.type = payload.type
+    db.commit()
+    db.refresh(tx)
+    return tx
+
+
+@router.delete("/{transaction_id}")
+def delete_transaction(transaction_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    tx = db.get(Transaction, transaction_id)
+    if not tx:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
+
+    account = db.get(BankAccount, tx.account_id)
+    if not account or account.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transacción no encontrada")
+
+    db.delete(tx)
+    db.commit()
+    return {"message": "Transacción eliminada"}
+
+
 @router.get("/planned", response_model=list[PlannedExpenseResponse])
 def list_planned_expenses(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     rows = (
@@ -137,6 +172,40 @@ def create_planned_expense(payload: PlannedExpenseCreate, db: Session = Depends(
     db.commit()
     db.refresh(row)
     return _serialize_planned_expense(row)
+
+
+@router.put("/planned/{planned_expense_id}", response_model=PlannedExpenseResponse)
+def update_planned_expense(planned_expense_id: int, payload: PlannedExpenseUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    row = db.get(PlannedExpense, planned_expense_id)
+    if not row or row.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Gasto planificado no encontrado")
+
+    if payload.due_date < date.today():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La fecha objetivo no puede estar en el pasado")
+
+    row.description = payload.description
+    row.category = payload.category
+    row.amount = payload.amount
+    row.due_date = payload.due_date
+    row.recurrence_type = payload.recurrence_type
+    row.planning_mode = payload.planning_mode
+    row.reminder_days_before = payload.reminder_days_before
+    row.is_active = payload.is_active
+    row.reminder_read_due_date = None
+    db.commit()
+    db.refresh(row)
+    return _serialize_planned_expense(row)
+
+
+@router.delete("/planned/{planned_expense_id}")
+def delete_planned_expense(planned_expense_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    row = db.get(PlannedExpense, planned_expense_id)
+    if not row or row.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Gasto planificado no encontrado")
+
+    db.delete(row)
+    db.commit()
+    return {"message": "Gasto planificado eliminado"}
 
 
 @router.patch("/planned/{planned_expense_id}/mark-paid")
