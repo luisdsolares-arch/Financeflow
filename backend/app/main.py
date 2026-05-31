@@ -1,6 +1,9 @@
+import os
+
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -62,3 +65,10 @@ app.include_router(api_router, prefix="/api/v1")
 def on_startup() -> None:
     if settings.auto_create_tables:
         Base.metadata.create_all(bind=engine)
+
+
+# Serve the compiled frontend for live updates (no APK reinstall needed).
+# Built assets are copied to backend/static_web/ during Render's build step.
+_static_web = os.path.join(os.path.dirname(__file__), "..", "static_web")
+if os.path.isdir(_static_web):
+    app.mount("/", StaticFiles(directory=_static_web, html=True), name="spa")

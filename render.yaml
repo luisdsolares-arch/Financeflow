@@ -3,7 +3,7 @@ services:
     name: financeflow-api
     runtime: python
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
+    buildCommand: cd ../frontend && npm install && npm run build && cp -r dist ../backend/static_web ; cd ../backend && pip install -r requirements.txt
     startCommand: sh scripts/start.sh
     healthCheckPath: /health
     envVars:

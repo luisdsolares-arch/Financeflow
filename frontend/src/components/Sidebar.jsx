@@ -2,12 +2,12 @@ import { LayoutDashboard, ArrowLeftRight, PiggyBank, Lightbulb, Settings, Bot } 
 import { NavLink } from "react-router-dom";
 
 const links = [
-  { to: "/app/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/app/transactions", icon: ArrowLeftRight, label: "Transacciones" },
-  { to: "/app/budgets", icon: PiggyBank, label: "Presupuestos" },
-  { to: "/app/suggestions", icon: Lightbulb, label: "Consejos" },
-  { to: "/app/payments", icon: Bot, label: "Gestor de Pagos" },
-  { to: "/app/settings", icon: Settings, label: "Configuración" },
+  { to: "/app/dashboard", icon: LayoutDashboard, label: "Dashboard", short: "Inicio" },
+  { to: "/app/transactions", icon: ArrowLeftRight, label: "Transacciones", short: "Gastos" },
+  { to: "/app/budgets", icon: PiggyBank, label: "Presupuestos", short: "Budgets" },
+  { to: "/app/suggestions", icon: Lightbulb, label: "Consejos", short: "Tips" },
+  { to: "/app/payments", icon: Bot, label: "Gestor de Pagos", short: "Pagos" },
+  { to: "/app/settings", icon: Settings, label: "Configuración", short: "Ajustes" },
 ];
 
 export default function Sidebar() {
@@ -39,8 +39,8 @@ export default function Sidebar() {
         </nav>
       </aside>
 
-      <nav className="mobile-tabbar fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur lg:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
+      <nav className="mobile-tabbar fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-1 backdrop-blur lg:hidden">
+        <div className="mx-auto grid max-w-md grid-cols-5">
           {links.slice(0, 5).map((item) => {
             const Icon = item.icon;
             return (
@@ -48,13 +48,13 @@ export default function Sidebar() {
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `flex flex-col items-center justify-center rounded-xl px-1 py-2 text-[11px] font-semibold transition ${
+                  `flex flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-2 transition ${
                     isActive ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100"
                   }`
                 }
               >
-                <Icon size={16} />
-                <span className="mt-1 leading-none">{item.label.split(" ")[0]}</span>
+                <Icon size={18} className="shrink-0" />
+                <span className="w-full text-center text-[10px] font-semibold leading-tight">{item.short}</span>
               </NavLink>
             );
           })}

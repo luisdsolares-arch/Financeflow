@@ -1,10 +1,7 @@
 {
   "appId": "com.financeflow.app",
   "appName": "FinanceFlow",
-  "webDir": "dist",
+  "webDir": "www",
   "server": {
-    "cleartext": false,
-    "hostname": "localhost",
-    "androidScheme": "https"
-  }
-}
+		"url": "https://financeflow-api-m78a.onrender.com",
+		"cleartext": false
