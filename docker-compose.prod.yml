@@ -1,0 +1,72 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV}
+      DATABASE_URL: ${DATABASE_URL}
+      AUTO_CREATE_TABLES: ${AUTO_CREATE_TABLES}
+      SECURITY_HEADERS_ENABLED: ${SECURITY_HEADERS_ENABLED}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      OPEN_BANKING_PROVIDER: ${OPEN_BANKING_PROVIDER}
+      PLAID_CLIENT_ID: ${PLAID_CLIENT_ID}
+      PLAID_SECRET: ${PLAID_SECRET}
+      PLAID_ENV: ${PLAID_ENV}
+      PLAID_REDIRECT_URI: ${PLAID_REDIRECT_URI}
+      BELVO_SECRET_ID: ${BELVO_SECRET_ID}
+      BELVO_SECRET_PASSWORD: ${BELVO_SECRET_PASSWORD}
+      BELVO_BASE_URL: ${BELVO_BASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["sh", "-c", "python -m alembic upgrade head ; uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "80:80"
+
+volumes:
+  pgdata_prod:

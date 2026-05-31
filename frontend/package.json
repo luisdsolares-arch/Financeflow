@@ -1,0 +1,43 @@
+{
+  "name": "personal-finance-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "mobile:build": "npm run build",
+    "mobile:sync": "npm run mobile:build && npx cap sync android",
+    "mobile:open": "npx cap open android",
+    "mobile:run": "npm run mobile:sync && npx cap run android",
+    "mobile:apk:release": "npm run mobile:sync && cd android && gradlew.bat assembleRelease",
+    "mobile:aab:release": "npm run mobile:sync && cd android && gradlew.bat bundleRelease",
+    "mobile:keystore:create": "cd android && keytool -genkeypair -v -storetype PKCS12 -keystore app/financeflow-release-key.jks -alias financeflow -keyalg RSA -keysize 2048 -validity 10000"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
+    "axios": "^1.7.7",
+    "lucide-react": "^0.454.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.27.0",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.0.1",
+    "@types/react": "^18.3.8",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "jsdom": "^25.0.1",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "vite": "^5.4.8",
+    "vitest": "^2.1.3"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "appId": "com.financeflow.app",
+  "appName": "FinanceFlow",
+  "webDir": "dist",
+  "server": {
+    "cleartext": true
+  }
+}

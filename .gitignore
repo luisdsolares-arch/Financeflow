@@ -1,0 +1,11 @@
+.env
+.env.prod
+backend/.env
+backend/.env.prod
+backend/.venv/
+backend/__pycache__/
+backend/.pytest_cache/
+backend/*.db
+backend/*.sqlite
+frontend/node_modules/
+frontend/dist/

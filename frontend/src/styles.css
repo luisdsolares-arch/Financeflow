@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #0f172a;
+  background-color: #f4f7fb;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #f4f7fb;
+  background-image: radial-gradient(at 5% 5%, rgba(15, 23, 42, 0.1), transparent 38%), radial-gradient(at 98% 2%, rgba(16, 185, 129, 0.13), transparent 46%);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+@media (max-width: 1023px) {
+  body {
+    background-image: linear-gradient(180deg, #edf2f8 0%, #f8fbff 100%);
+  }
+
+  .mobile-tabbar {
+    box-shadow: 0 -10px 30px rgba(15, 23, 42, 0.08);
+  }
+}
+
+.kpi-card {
+  @apply bg-panel shadow-premium rounded-2xl p-5 border border-slate-200;
+}
+
+.panel {
+  @apply bg-panel rounded-2xl border border-slate-200 shadow-premium;
+}
+
+.menu-pop,
+.search-panel-pop {
+  transform-origin: top right;
+  animation: header-pop 160ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.search-panel-pop {
+  transform-origin: top left;
+}
+
+@keyframes header-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-pop,
+  .search-panel-pop {
+    animation: none;
+  }
+}
+
+:root.dark-mode {
+  color: #e2e8f0;
+  background-color: #0b1220;
+}
+
+:root.dark-mode body {
+  background-color: #0b1220;
+  background-image: radial-gradient(at 5% 5%, rgba(56, 189, 248, 0.12), transparent 40%), radial-gradient(at 98% 2%, rgba(16, 185, 129, 0.14), transparent 48%);
+}
+
+:root.dark-mode .panel,
+:root.dark-mode .kpi-card,
+:root.dark-mode .mobile-tabbar,
+:root.dark-mode header,
+:root.dark-mode nav,
+:root.dark-mode main,
+:root.dark-mode section {
+  background-color: rgba(15, 23, 42, 0.82) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  color: #e2e8f0 !important;
+}
+
+:root.dark-mode input,
+:root.dark-mode select,
+:root.dark-mode button {
+  border-color: rgba(148, 163, 184, 0.28) !important;
+}
+
+:root.dark-mode input,
+:root.dark-mode select {
+  background-color: rgba(15, 23, 42, 0.65) !important;
+  color: #e2e8f0 !important;
+}
+
+:root.dark-mode .text-slate-900,
+:root.dark-mode .text-slate-800,
+:root.dark-mode .text-slate-700,
+:root.dark-mode .text-slate-600,
+:root.dark-mode .text-slate-500,
+:root.dark-mode .text-slate-400 {
+  color: #cbd5e1 !important;
+}
+
+:root.dark-mode .bg-white,
+:root.dark-mode .bg-slate-50,
+:root.dark-mode .bg-canvas {
+  background-color: rgba(15, 23, 42, 0.82) !important;
+}
+
+:root.dark-mode .menu-pop,
+:root.dark-mode .search-panel-pop {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  border-color: rgba(148, 163, 184, 0.24) !important;
+  box-shadow: 0 22px 45px rgba(2, 6, 23, 0.55) !important;
+}
+
+:root.dark-mode .menu-pop button:hover,
+:root.dark-mode .search-panel-pop button:hover {
+  background-color: rgba(51, 65, 85, 0.45) !important;
+}
+
+:root.dark-mode .menu-pop .bg-slate-100 {
+  background-color: rgba(51, 65, 85, 0.55) !important;
+}
+
+:root.dark-mode .menu-pop .bg-rose-50 {
+  background-color: rgba(190, 24, 93, 0.16) !important;
+}
