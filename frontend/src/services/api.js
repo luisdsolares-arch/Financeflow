@@ -3,6 +3,8 @@ import { Capacitor } from "@capacitor/core";
 
 const API_BASE_URL_KEY = "financeflow.api.base_url";
 const RENDER_API_BASE_URL = "https://financeflow-api-m78a.onrender.com/api/v1";
+const RENDER_API_HOST = "financeflow-api-m78a.onrender.com";
+const isAndroidPlatform = Capacitor.getPlatform() === "android";
 const LEGACY_API_BASE_URLS = [
   "https://financeflow-api.onrender.com/api/v1",
   "https://financeflow-api.onrender.com",
@@ -12,6 +14,18 @@ const LEGACY_API_BASE_URLS = [
 ];
 
 const normalizeBaseUrl = (value) => (value || "").trim().replace(/\/$/, "");
+
+const shouldForceAndroidOfficialUrl = (value) => {
+  if (!isAndroidPlatform) {
+    return false;
+  }
+  try {
+    const url = new URL(ensureApiV1Path(value));
+    return url.hostname !== RENDER_API_HOST;
+  } catch {
+    return true;
+  }
+};
 
 const ensureApiV1Path = (value) => {
   const normalized = normalizeBaseUrl(value);
@@ -44,23 +58,32 @@ export const getApiBaseUrl = () => {
   const runtimeOverride = localStorage.getItem(API_BASE_URL_KEY);
   if (runtimeOverride && runtimeOverride.trim()) {
     const migratedOverride = migrateLegacyBaseUrl(runtimeOverride);
-    if (migratedOverride !== normalizeBaseUrl(runtimeOverride)) {
-      localStorage.setItem(API_BASE_URL_KEY, migratedOverride);
+    const finalOverride = shouldForceAndroidOfficialUrl(migratedOverride) ? RENDER_API_BASE_URL : migratedOverride;
+    if (finalOverride !== normalizeBaseUrl(runtimeOverride)) {
+      localStorage.setItem(API_BASE_URL_KEY, finalOverride);
     }
-    return migratedOverride;
+    return finalOverride;
   }
-  return migrateLegacyBaseUrl(import.meta.env.VITE_API_BASE_URL || defaultBaseUrl);
+
+  const envOrDefault = import.meta.env.VITE_API_BASE_URL || defaultBaseUrl;
+  const migratedEnvOrDefault = migrateLegacyBaseUrl(envOrDefault);
+  if (shouldForceAndroidOfficialUrl(migratedEnvOrDefault)) {
+    return RENDER_API_BASE_URL;
+  }
+
+  return migratedEnvOrDefault;
 };
 
 export const setApiBaseUrl = (url) => {
   const cleaned = migrateLegacyBaseUrl(url);
-  if (!cleaned) {
+  const finalUrl = shouldForceAndroidOfficialUrl(cleaned) ? RENDER_API_BASE_URL : cleaned;
+  if (!finalUrl) {
     localStorage.removeItem(API_BASE_URL_KEY);
     api.defaults.baseURL = getApiBaseUrl();
     return;
   }
-  localStorage.setItem(API_BASE_URL_KEY, cleaned);
-  api.defaults.baseURL = cleaned;
+  localStorage.setItem(API_BASE_URL_KEY, finalUrl);
+  api.defaults.baseURL = finalUrl;
 };
 
 const hasRuntimeApiOverride = () => {
@@ -97,6 +120,15 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (!error?.response && error?.config && !error.config.__retryWithOfficialApi) {
+      setApiBaseUrl(RENDER_API_BASE_URL);
+      return api.request({
+        ...error.config,
+        __retryWithOfficialApi: true,
+        baseURL: RENDER_API_BASE_URL,
+      });
+    }
+
     if (!error?.response && error?.config && !error.config.__retryWithDefaultApi && hasRuntimeApiOverride()) {
       resetToDefaultApiBaseUrl();
       return api.request({
