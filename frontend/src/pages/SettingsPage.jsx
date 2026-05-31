@@ -145,37 +145,39 @@ export default function SettingsPage() {
   const applyPinChanges = () => {
     if (!settings.security_pin_enabled) {
       disablePin();
-      setSettings((prev) => ({ ...prev, security_pin_hash: "" }));
+      const nextValues = { ...settings, security_pin_hash: "" };
+      setSettings(nextValues);
       setPinDraft("");
       setPinConfirm("");
       setStatus("PIN desactivado.");
-      return true;
+      return { ok: true, values: nextValues };
     }
 
     if (!pinDraft && settings.security_pin_hash) {
-      return true;
+      return { ok: true, values: settings };
     }
 
     if (!/^\d{4,6}$/.test(pinDraft)) {
       setStatus("El PIN debe tener entre 4 y 6 dígitos.");
-      return false;
+      return { ok: false, values: settings };
     }
     if (pinDraft !== pinConfirm) {
       setStatus("El PIN y su confirmación no coinciden.");
-      return false;
+      return { ok: false, values: settings };
     }
 
     const nextHash = savePin(pinDraft);
     if (!nextHash) {
       setStatus("No se pudo guardar el PIN.");
-      return false;
+      return { ok: false, values: settings };
     }
 
-    setSettings((prev) => ({ ...prev, security_pin_hash: nextHash }));
+    const nextValues = { ...settings, security_pin_hash: nextHash };
+    setSettings(nextValues);
     setPinDraft("");
     setPinConfirm("");
     setStatus("PIN configurado correctamente.");
-    return true;
+    return { ok: true, values: nextValues };
   };
 
   const connectBank = async () => {
@@ -417,11 +419,11 @@ export default function SettingsPage() {
 
       <div className="panel flex flex-wrap items-center gap-2 p-4">
         <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={() => {
-          const pinOk = applyPinChanges();
-          if (!pinOk) {
+          const pinResult = applyPinChanges();
+          if (!pinResult.ok) {
             return;
           }
-          void saveSettings();
+          void saveSettings(pinResult.values);
         }} disabled={isSaving}>
           {isSaving ? "Guardando..." : "Guardar cambios"}
         </button>
