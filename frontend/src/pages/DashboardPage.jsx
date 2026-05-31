@@ -280,12 +280,12 @@ export default function DashboardPage() {
       </div>
 
       <div className="panel p-5">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-sm font-semibold text-slate-700">Calendario Financiero</h2>
-          <div className="flex items-center gap-2 text-sm">
-            <button type="button" onClick={() => moveCalendarMonth(-1)} className="rounded-lg border border-slate-200 px-2 py-1 text-slate-700 hover:bg-slate-100">Anterior</button>
-            <span className="min-w-40 text-center font-semibold text-slate-700">{monthLabels[calendarDate.month]} {calendarDate.year}</span>
-            <button type="button" onClick={() => moveCalendarMonth(1)} className="rounded-lg border border-slate-200 px-2 py-1 text-slate-700 hover:bg-slate-100">Siguiente</button>
+          <div className="flex w-full items-center justify-between gap-2 text-sm sm:w-auto sm:justify-start">
+            <button type="button" onClick={() => moveCalendarMonth(-1)} className="shrink-0 rounded-lg border border-slate-200 px-2 py-1 text-slate-700 hover:bg-slate-100">Anterior</button>
+            <span className="min-w-0 flex-1 text-center text-xs font-semibold text-slate-700 sm:min-w-40 sm:flex-none sm:text-sm">{monthLabels[calendarDate.month]} {calendarDate.year}</span>
+            <button type="button" onClick={() => moveCalendarMonth(1)} className="shrink-0 rounded-lg border border-slate-200 px-2 py-1 text-slate-700 hover:bg-slate-100">Siguiente</button>
           </div>
         </div>
 
