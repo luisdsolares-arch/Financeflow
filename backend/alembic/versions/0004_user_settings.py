@@ -1,7 +1,7 @@
 """user settings table
 
 Revision ID: 0004_user_settings
-Revises: 0003_payment_notifications_and_limits
+Revises: 0003_payment_notif_limits
 Create Date: 2026-05-30 00:00:03
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision = "0004_user_settings"
-down_revision = "0003_payment_notifications_and_limits"
+down_revision = "0003_payment_notif_limits"
 branch_labels = None
 depends_on = None
 

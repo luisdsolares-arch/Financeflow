@@ -1,6 +1,6 @@
 """payment notifications and safety limits
 
-Revision ID: 0003_payment_notifications_and_limits
+Revision ID: 0003_payment_notif_limits
 Revises: 0002_auto_payments
 Create Date: 2026-05-30 00:00:02
 """
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "0003_payment_notifications_and_limits"
+revision = "0003_payment_notif_limits"
 down_revision = "0002_auto_payments"
 branch_labels = None
 depends_on = None

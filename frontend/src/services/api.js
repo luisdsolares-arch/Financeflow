@@ -5,7 +5,7 @@ const API_BASE_URL_KEY = "financeflow.api.base_url";
 
 const defaultBaseUrl =
   Capacitor.getPlatform() === "android"
-    ? "https://financeflow-api.onrender.com/api/v1"
+    ? "https://financeflow-api-m78a.onrender.com/api/v1"
     : "http://localhost:8000/api/v1";
 
 export const getApiBaseUrl = () => {
