@@ -1,6 +1,6 @@
 """planned notifications read state
 
-Revision ID: 0008_planned_notifications_read_state
+Revision ID: 0008_planned_notif_read
 Revises: 0007_financial_goals
 Create Date: 2026-05-31 16:35:00
 """
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "0008_planned_notifications_read_state"
+revision = "0008_planned_notif_read"
 down_revision = "0007_financial_goals"
 branch_labels = None
 depends_on = None
