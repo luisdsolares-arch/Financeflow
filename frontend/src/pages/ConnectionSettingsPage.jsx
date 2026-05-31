@@ -42,11 +42,11 @@ export default function ConnectionSettingsPage() {
           </div>
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">FinanceFlow</p>
-            <h1 className="mt-1 text-xl font-bold text-slate-900">Conexión API</h1>
+            <h1 className="mt-1 text-xl font-bold text-slate-900">Conexión técnica</h1>
           </div>
         </div>
 
-        <p className="mt-3 text-sm text-slate-500">Usa esta pantalla solo si necesitas cambiar el servidor para el APK o pruebas de red.</p>
+        <p className="mt-3 text-sm text-slate-500">Usa esta pantalla solo como acceso de emergencia desde login o registro. La configuración principal de conexión ahora está dentro de Configuración.</p>
 
         <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-3">
           <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">URL API</label>
@@ -56,7 +56,7 @@ export default function ConnectionSettingsPage() {
             onChange={(event) => setApiBaseUrlInput(event.target.value)}
             placeholder="http://192.168.1.100:8000/api/v1"
           />
-          <p className="mt-2 text-xs text-slate-500">Si escribes solo el dominio, la app agregará automáticamente /api/v1. Si lo dejas vacío, se usará el valor predeterminado.</p>
+          <p className="mt-2 text-xs text-slate-500">Si escribes solo el dominio, la app agregará automáticamente /api/v1. En Android se sigue priorizando el servidor oficial.</p>
         </div>
 
         {saved ? <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">Conexión guardada correctamente.</p> : null}

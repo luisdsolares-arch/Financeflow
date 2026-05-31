@@ -34,9 +34,9 @@ export default function UnlockPage() {
         <h1 className="mt-4 text-center text-2xl font-bold text-slate-900">Sesión bloqueada</h1>
         <p className="mt-1 text-center text-sm text-slate-500">Ingresa tu PIN para continuar.</p>
 
-        <form className="mt-6 space-y-4" onSubmit={onUnlock}>
-          <label className="block text-sm text-slate-700">
-            PIN
+        <form className="mt-6 space-y-4 text-center" onSubmit={onUnlock}>
+          <label className="mx-auto block max-w-xs text-sm text-slate-700">
+            <span className="block text-center">PIN</span>
             <input
               type="password"
               inputMode="numeric"
@@ -51,12 +51,12 @@ export default function UnlockPage() {
             />
           </label>
 
-          {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p> : null}
+          {error ? <p className="mx-auto max-w-xs rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p> : null}
 
-          <button type="submit" className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
+          <button type="submit" className="mx-auto block w-full max-w-xs rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
             Desbloquear
           </button>
-          <button type="button" onClick={logout} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+          <button type="button" onClick={logout} className="mx-auto block w-full max-w-xs rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
             Cerrar sesión
           </button>
         </form>

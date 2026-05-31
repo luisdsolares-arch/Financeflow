@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { getApiBaseUrl, setApiBaseUrl } from "../services/api";
 import { clearBiometricConfig, enableBiometricLogin, isBiometricEnabled, isBiometricSupported } from "../services/biometrics";
 import { clearSessionLockState, disablePin, savePin } from "../services/securityLock";
 
 const SETTINGS_KEY = "financeflow.settings.v1";
 const PROFILE_UPDATED_EVENT = "financeflow:profile-updated";
+const PRODUCTION_API_URL = "https://financeflow-api-m78a.onrender.com/api/v1";
 
 const defaultSettings = {
   profile_name: "Andrea Ruiz",
@@ -43,6 +45,7 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [pinDraft, setPinDraft] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
+  const [apiBaseUrl, setApiBaseUrlInput] = useState("");
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -83,6 +86,7 @@ export default function SettingsPage() {
   useEffect(() => {
     setBiometricAvailable(isBiometricSupported());
     setBiometricEnabled(isBiometricEnabled());
+    setApiBaseUrlInput(getApiBaseUrl());
   }, []);
 
   const updateField = (key, value) => {
@@ -217,15 +221,27 @@ export default function SettingsPage() {
     }
   };
 
+  const saveConnectionSettings = () => {
+    setApiBaseUrl(apiBaseUrl);
+    setApiBaseUrlInput(getApiBaseUrl());
+    setStatus("Conexión API actualizada para este dispositivo.");
+  };
+
+  const restoreOfficialConnection = () => {
+    setApiBaseUrl(PRODUCTION_API_URL);
+    setApiBaseUrlInput(getApiBaseUrl());
+    setStatus("Conexión restablecida al servidor oficial.");
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="panel p-5">
+    <div className="space-y-4 sm:space-y-5">
+      <div className="panel p-4 sm:p-5 lg:p-6">
         <h2 className="text-lg font-semibold text-slate-800">Configuración de la Aplicación</h2>
         <p className="mt-1 text-sm text-slate-500">Personaliza seguridad, notificaciones, preferencias financieras y automatización de pagos.</p>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <div className="panel space-y-4 p-5">
+        <div className="panel space-y-4 p-4 sm:p-5 lg:p-6">
           <h3 className="text-sm font-semibold text-slate-700">Perfil</h3>
           <label className="block text-sm text-slate-600">
             Nombre
@@ -258,7 +274,7 @@ export default function SettingsPage() {
           </label>
         </div>
 
-        <div className="panel space-y-4 p-5">
+        <div className="panel space-y-4 p-4 sm:p-5 lg:p-6">
           <h3 className="text-sm font-semibold text-slate-700">Objetivos y Alertas</h3>
           <label className="block text-sm text-slate-600">
             Meta de ahorro mensual (%)
@@ -293,7 +309,7 @@ export default function SettingsPage() {
           </label>
         </div>
 
-        <div className="panel space-y-4 p-5">
+        <div className="panel space-y-4 p-4 sm:p-5 lg:p-6">
           <h3 className="text-sm font-semibold text-slate-700">Seguridad y Sesión</h3>
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
@@ -316,7 +332,7 @@ export default function SettingsPage() {
             Bloquear app con PIN
           </label>
           {settings.security_pin_enabled ? (
-            <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
               <label className="block text-sm text-slate-600">
                 Nuevo PIN (4-6 dígitos)
                 <input
@@ -364,7 +380,7 @@ export default function SettingsPage() {
           {!biometricAvailable ? <p className="text-xs text-slate-500">Biometría no disponible en este navegador/dispositivo.</p> : null}
         </div>
 
-        <div className="panel space-y-4 p-5">
+        <div className="panel space-y-4 p-4 sm:p-5 lg:p-6">
           <h3 className="text-sm font-semibold text-slate-700">Notificaciones</h3>
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input type="checkbox" checked={settings.notify_email} onChange={(e) => updateField("notify_email", e.target.checked)} />
@@ -376,7 +392,7 @@ export default function SettingsPage() {
           </label>
         </div>
 
-        <div className="panel space-y-4 p-5 xl:col-span-2">
+        <div className="panel space-y-4 p-4 sm:p-5 lg:p-6 xl:col-span-2">
           <h3 className="text-sm font-semibold text-slate-700">Open Banking y Automatización</h3>
           <p className="text-sm text-slate-500">
             Tus credenciales bancarias no pasan por nuestros servidores. Solo recibimos tokens regulados PSD2/Open Banking.
@@ -415,9 +431,37 @@ export default function SettingsPage() {
             Conectar Cuenta Bancaria
           </button>
         </div>
+
+        <div className="panel space-y-4 p-4 sm:p-5 lg:p-6 xl:col-span-2">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700">Conexión API</h3>
+            <p className="mt-1 text-sm text-slate-500">Usa este ajuste solo si necesitas cambiar el servidor para pruebas. En Android/APK se prioriza el servidor oficial por seguridad.</p>
+          </div>
+
+          <label className="block text-sm text-slate-600">
+            URL API
+            <input
+              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+              value={apiBaseUrl}
+              onChange={(e) => setApiBaseUrlInput(e.target.value)}
+              placeholder="https://financeflow-api-m78a.onrender.com/api/v1"
+            />
+          </label>
+
+          <p className="text-xs text-slate-500">Si escribes solo el dominio, la app agregará automáticamente /api/v1. Si dejas este valor vacío, se usará la configuración predeterminada.</p>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <button type="button" onClick={restoreOfficialConnection} className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100">
+              Usar servidor oficial
+            </button>
+            <button type="button" onClick={saveConnectionSettings} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              Guardar conexión
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div className="panel flex flex-wrap items-center gap-2 p-4">
+      <div className="panel flex flex-col items-start gap-2 p-4 sm:flex-row sm:flex-wrap sm:items-center">
         <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={() => {
           const pinResult = applyPinChanges();
           if (!pinResult.ok) {
@@ -430,7 +474,7 @@ export default function SettingsPage() {
         <button className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60" onClick={resetSettings} disabled={isSaving}>
           Restablecer
         </button>
-        {status ? <p className="text-sm text-slate-700">{status}</p> : null}
+        {status ? <p className="text-sm text-slate-700 sm:ml-2">{status}</p> : null}
       </div>
     </div>
   );

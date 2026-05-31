@@ -168,8 +168,8 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         <KpiCard label="Balance Total Neto" value={formatCurrency(summary.net_balance)} />
         <KpiCard label="Ingresos del Mes" value={formatCurrency(summary.monthly_income)} tone="success" />
         <KpiCard label="Gastos del Mes" value={formatCurrency(summary.monthly_expenses)} tone="danger" />
@@ -180,17 +180,17 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="panel p-5">
-        <div className="flex items-center justify-between gap-3">
+      <div className="panel p-4 sm:p-5 lg:p-6">
+        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
           <h2 className="text-sm font-semibold text-slate-700">Próximos Gastos Planificados</h2>
-          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 sm:text-[13px]">
             Reserva mensual sugerida: {formatCurrency(summary.projected_monthly_reserve || 0)}
           </span>
         </div>
         <div className="mt-3 space-y-2">
           {summary.upcoming_planned_expenses?.length ? (
             summary.upcoming_planned_expenses.map((item) => (
-              <article key={item.id} className="rounded-xl border border-slate-200 p-3 text-sm">
+              <article key={item.id} className="rounded-xl border border-slate-200 p-3 text-xs sm:text-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-slate-800">{item.description}</p>
@@ -209,10 +209,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <div className="panel p-5 xl:col-span-2">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="panel p-4 sm:p-5 lg:p-6 md:col-span-2 xl:col-span-2">
           <h2 className="text-sm font-semibold text-slate-700">Evolucion del Balance</h2>
-          <div className="mt-4 h-72">
+          <div className="mt-4 h-64 sm:h-72 lg:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={timelineData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -225,9 +225,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="panel p-5">
+        <div className="panel p-4 sm:p-5 lg:p-6">
           <h2 className="text-sm font-semibold text-slate-700">Gastos por Categoria</h2>
-          <div className="mt-4 h-72">
+          <div className="mt-4 h-64 sm:h-72 lg:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={categoryData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={95}>
@@ -242,8 +242,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <div className="panel p-5 space-y-3">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="panel space-y-3 p-4 sm:p-5 lg:p-6">
           <h2 className="text-sm font-semibold text-slate-700">Simulador "Qué pasa si"</h2>
           <label className="block text-sm text-slate-600">
             Variación de ingresos (%)
@@ -260,7 +260,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="panel p-5">
+        <div className="panel p-4 sm:p-5 lg:p-6">
           <h2 className="text-sm font-semibold text-slate-700">Progreso de Metas</h2>
           <div className="mt-3 space-y-2">
             {goals.length ? goals.slice(0, 4).map((goal) => (
@@ -279,7 +279,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="panel p-5">
+      <div className="panel p-4 sm:p-5 lg:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-sm font-semibold text-slate-700">Calendario Financiero</h2>
           <div className="flex w-full items-center justify-between gap-2 text-sm sm:w-auto sm:justify-start">
@@ -289,21 +289,21 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:gap-2 sm:text-xs">
           {weekdayLabels.map((weekday) => (
             <div key={weekday}>{weekday}</div>
           ))}
         </div>
 
-        <div className="mt-2 grid grid-cols-7 gap-2">
+        <div className="mt-2 grid grid-cols-7 gap-1 sm:gap-2">
           {calendarCells.map((cell) => (
-            <article key={cell.key} className={`min-h-24 rounded-xl border p-2 ${cell.day ? "border-slate-200 bg-white" : "border-transparent bg-transparent"}`}>
+            <article key={cell.key} className={`min-h-16 rounded-lg border p-1.5 sm:min-h-20 sm:rounded-xl sm:p-2 lg:min-h-24 ${cell.day ? "border-slate-200 bg-white" : "border-transparent bg-transparent"}`}>
               {cell.day ? (
                 <>
-                  <p className="text-xs font-semibold text-slate-600">{cell.day}</p>
-                  <div className="mt-1 space-y-1">
-                    {cell.items.slice(0, 2).map((entry) => (
-                      <div key={`${cell.key}-${entry.label}`} className={`rounded px-1.5 py-0.5 text-[10px] ${entry.type === "goal" ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"}`}>
+                  <p className="text-[10px] font-semibold text-slate-600 sm:text-xs">{cell.day}</p>
+                  <div className="mt-1 space-y-0.5 sm:space-y-1">
+                    {cell.items.slice(0, 2).map((entry, index) => (
+                      <div key={`${cell.key}-${entry.type}-${entry.label}-${index}`} className={`rounded px-1 py-0.5 text-[9px] sm:px-1.5 sm:text-[10px] ${entry.type === "goal" ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"}`}>
                         <p className="truncate">{entry.label}</p>
                         <p className="truncate font-semibold">{formatCurrency(entry.amount || 0)}</p>
                       </div>
@@ -317,9 +317,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="panel overflow-x-auto p-5">
+      <div className="panel overflow-x-auto p-4 sm:p-5 lg:p-6">
         <h2 className="text-sm font-semibold text-slate-700">Ultimas Transacciones</h2>
-        <table className="mt-4 w-full text-left text-sm">
+        <table className="mt-4 w-full text-left text-xs sm:text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-slate-500">
               <th className="pb-2">Fecha</th>
@@ -332,7 +332,7 @@ export default function DashboardPage() {
           <tbody>
             {summary.recent_transactions?.map((item) => (
               <tr key={`${item.date}-${item.concept}`} className="border-b border-slate-100">
-                <td className="py-3">{item.date}</td>
+                <td className="py-2 sm:py-3">{item.date}</td>
                 <td>{item.concept}</td>
                 <td>{item.category}</td>
                 <td>

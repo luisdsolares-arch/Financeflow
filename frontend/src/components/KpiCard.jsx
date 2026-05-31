@@ -7,9 +7,9 @@ export default function KpiCard({ label, value, tone = "default", hint }) {
 
   return (
     <div className="kpi-card">
-      <p className="text-sm text-slate-500">{label}</p>
-      <h3 className={`mt-2 text-2xl font-semibold ${toneClasses[tone]}`}>{value}</h3>
-      {hint ? <p className="mt-2 text-xs text-slate-400">{hint}</p> : null}
+      <p className="text-xs text-slate-500 sm:text-sm">{label}</p>
+      <h3 className={`mt-1.5 text-xl font-semibold sm:mt-2 sm:text-2xl lg:text-[1.75rem] ${toneClasses[tone]}`}>{value}</h3>
+      {hint ? <p className="mt-1.5 text-[11px] text-slate-400 sm:mt-2 sm:text-xs">{hint}</p> : null}
     </div>
   );
 }

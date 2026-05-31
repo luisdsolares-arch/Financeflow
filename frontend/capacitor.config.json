@@ -3,5 +3,6 @@
   "appName": "FinanceFlow",
   "webDir": "www",
   "server": {
-		"url": "https://financeflow-api-m78a.onrender.com",
-		"cleartext": false
+    "cleartext": false
+  }
+}

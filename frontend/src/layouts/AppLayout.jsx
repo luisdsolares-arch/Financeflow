@@ -69,11 +69,11 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
-      <div className="mx-auto flex w-full max-w-md lg:max-w-[1600px]">
+      <div className="mx-auto flex w-full max-w-[430px] sm:max-w-3xl lg:max-w-6xl xl:max-w-[1440px]">
         <Sidebar />
-        <main className="w-full pb-24 lg:pb-0">
+        <main className="w-full pb-24">
           <Header />
-          <section className="p-3 md:p-6">
+          <section className="px-3 py-3 sm:px-5 sm:py-4 lg:px-8 lg:py-6 xl:px-10">
             <Outlet />
           </section>
         </main>
