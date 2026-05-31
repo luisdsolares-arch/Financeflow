@@ -12,7 +12,7 @@ from app.schemas.finance import TransactionCreate
 router = APIRouter()
 
 
-@router.get("/")
+@router.get("")
 def list_transactions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     rows = (
         db.query(Transaction)
@@ -25,7 +25,7 @@ def list_transactions(db: Session = Depends(get_db), current_user: User = Depend
     return rows
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 def create_transaction(payload: TransactionCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     account = db.get(BankAccount, payload.account_id)
     if not account or account.user_id != current_user.id:

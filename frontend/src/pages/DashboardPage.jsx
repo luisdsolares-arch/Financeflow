@@ -14,6 +14,7 @@ import {
 import KpiCard from "../components/KpiCard";
 import { fallbackSummary } from "../data/mock";
 import api from "../services/api";
+import { formatCurrency } from "../services/currency";
 
 const palette = ["#0F172A", "#10B981", "#EF4444", "#334155", "#94A3B8"];
 
@@ -39,9 +40,9 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Balance Total Neto" value={`$${summary.net_balance.toLocaleString()}`} />
-        <KpiCard label="Ingresos del Mes" value={`$${summary.monthly_income.toLocaleString()}`} tone="success" />
-        <KpiCard label="Gastos del Mes" value={`$${summary.monthly_expenses.toLocaleString()}`} tone="danger" />
+        <KpiCard label="Balance Total Neto" value={formatCurrency(summary.net_balance)} />
+        <KpiCard label="Ingresos del Mes" value={formatCurrency(summary.monthly_income)} tone="success" />
+        <KpiCard label="Gastos del Mes" value={formatCurrency(summary.monthly_expenses)} tone="danger" />
         <KpiCard label="Capacidad de Ahorro" value={`${summary.saving_capacity_pct}%`} hint="Objetivo recomendado >= 20%" />
       </div>
 
@@ -101,7 +102,7 @@ export default function DashboardPage() {
                     {item.type === "income" ? "Ingreso" : "Gasto"}
                   </span>
                 </td>
-                <td className="text-right font-medium">${item.amount.toLocaleString()}</td>
+                <td className="text-right font-medium">{formatCurrency(item.amount)}</td>
               </tr>
             ))}
           </tbody>

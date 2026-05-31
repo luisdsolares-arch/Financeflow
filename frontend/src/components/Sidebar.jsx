@@ -4,7 +4,7 @@ import { NavLink } from "react-router-dom";
 const links = [
   { to: "/app/dashboard", icon: LayoutDashboard, label: "Dashboard", short: "Inicio" },
   { to: "/app/transactions", icon: ArrowLeftRight, label: "Transacciones", short: "Gastos" },
-  { to: "/app/budgets", icon: PiggyBank, label: "Presupuestos", short: "Budgets" },
+  { to: "/app/budgets", icon: PiggyBank, label: "Presupuestos", short: "Presup." },
   { to: "/app/suggestions", icon: Lightbulb, label: "Consejos", short: "Tips" },
   { to: "/app/payments", icon: Bot, label: "Gestor de Pagos", short: "Pagos" },
   { to: "/app/settings", icon: Settings, label: "Configuración", short: "Ajustes" },

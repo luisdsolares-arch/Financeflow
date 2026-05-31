@@ -14,7 +14,7 @@ def test_settings_default_created_and_persisted(client):
     get_default = client.get("/api/v1/settings", headers=headers)
     assert get_default.status_code == 200
     default_body = get_default.json()
-    assert default_body["currency"] == "USD"
+    assert default_body["currency"] == "EUR"
     assert default_body["profile_name"] == "Settings User"
     assert default_body["profile_email"] == "settings@example.com"
 

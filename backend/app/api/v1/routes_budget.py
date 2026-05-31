@@ -11,12 +11,12 @@ from app.schemas.finance import BudgetCreate
 router = APIRouter()
 
 
-@router.get("/")
+@router.get("")
 def list_budgets(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return db.query(Budget).filter(Budget.user_id == current_user.id).all()
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 def create_budget(payload: BudgetCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     budget = Budget(user_id=current_user.id, category=payload.category, limit_amount=payload.limit_amount, month_year=payload.month_year)
     db.add(budget)

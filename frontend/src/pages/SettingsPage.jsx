@@ -9,7 +9,7 @@ const PROFILE_UPDATED_EVENT = "financeflow:profile-updated";
 const defaultSettings = {
   profile_name: "Andrea Ruiz",
   profile_email: "demo.app@example.com",
-  currency: "USD",
+  currency: "EUR",
   monthly_savings_goal: 20,
   weekly_budget_alert_threshold: 80,
   require_2fa_for_sensitive_actions: false,
@@ -79,12 +79,15 @@ export default function SettingsPage() {
   }, []);
 
   const updateField = (key, value) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
+    const nextSettings = { ...settings, [key]: value };
+    setSettings(nextSettings);
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(nextSettings));
     if (key === "profile_name") {
       broadcastProfileName(value);
     }
     if (key === "dark_mode") {
       applyTheme(Boolean(value));
+      void saveSettings(nextSettings);
     }
   };
 
@@ -95,11 +98,13 @@ export default function SettingsPage() {
       setSettings((prev) => ({ ...prev, ...response.data }));
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(response.data));
       broadcastProfileName(response.data.profile_name || values.profile_name);
+      applyTheme(Boolean(response.data.dark_mode));
       setStatus("Configuración guardada correctamente en todos tus dispositivos.");
       return true;
     } catch {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(values));
       broadcastProfileName(values.profile_name);
+      applyTheme(Boolean(values.dark_mode));
       setStatus("No se pudo sincronizar con el servidor. Se guardó solo en este dispositivo.");
       return false;
     } finally {
@@ -197,8 +202,8 @@ export default function SettingsPage() {
               value={settings.currency}
               onChange={(e) => updateField("currency", e.target.value)}
             >
-              <option value="USD">USD - Dólar</option>
               <option value="EUR">EUR - Euro</option>
+              <option value="USD">USD - Dólar</option>
               <option value="DOP">DOP - Peso Dominicano</option>
             </select>
           </label>

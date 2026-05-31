@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
+import { formatCurrency } from "../services/currency";
 
 export default function TransactionsPage() {
   const [rows, setRows] = useState([]);
@@ -33,7 +34,7 @@ export default function TransactionsPage() {
                 <td>{row.description}</td>
                 <td>{row.category}</td>
                 <td>{row.type}</td>
-                <td className="text-right">${row.amount}</td>
+                <td className="text-right">{formatCurrency(row.amount)}</td>
               </tr>
             ))}
           </tbody>

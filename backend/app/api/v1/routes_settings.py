@@ -39,7 +39,7 @@ def _ensure_user_settings(db: Session, current_user: User) -> UserSettings:
         user_id=current_user.id,
         profile_name=current_user.name,
         profile_email=current_user.email,
-        currency="USD",
+        currency="EUR",
         monthly_savings_goal=20,
         weekly_budget_alert_threshold=80,
         require_2fa_for_sensitive_actions=False,

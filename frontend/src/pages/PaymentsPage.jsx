@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
+import { formatCurrency } from "../services/currency";
 
 export default function PaymentsPage() {
   const [accounts, setAccounts] = useState([]);
@@ -150,7 +151,7 @@ export default function PaymentsPage() {
             {suggestions.length ? suggestions.map((s) => (
               <div key={s.description} className="rounded-xl border border-slate-200 p-3 text-sm">
                 <p className="font-medium text-slate-800">{s.description}</p>
-                <p className="text-slate-500">Sugerido: ${s.recommended_amount} ({s.frequency_hint})</p>
+                <p className="text-slate-500">Sugerido: {formatCurrency(s.recommended_amount)} ({s.frequency_hint})</p>
               </div>
             )) : <p className="text-sm text-slate-500">Sin sugerencias por ahora.</p>}
           </div>
@@ -163,8 +164,8 @@ export default function PaymentsPage() {
           {rules.map((rule) => (
             <div key={rule.id} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
               <div>
-                <p className="font-medium text-slate-800">{rule.name} - ${rule.amount}</p>
-                <p className="text-xs text-slate-500">Día {rule.day_of_month} | Próxima ejecución: {rule.next_run_date} | Límite: ${rule.max_amount}</p>
+                <p className="font-medium text-slate-800">{rule.name} - {formatCurrency(rule.amount)}</p>
+                <p className="text-xs text-slate-500">Día {rule.day_of_month} | Próxima ejecución: {rule.next_run_date} | Límite: {formatCurrency(rule.max_amount)}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => runNow(rule)} className="rounded-xl bg-slate-900 px-3 py-1 text-xs font-semibold text-white">Ejecutar ahora</button>

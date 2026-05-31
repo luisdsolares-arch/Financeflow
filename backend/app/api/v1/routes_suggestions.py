@@ -14,7 +14,7 @@ from app.services.advice_engine import aggregate_expenses_by_category, build_fin
 router = APIRouter()
 
 
-@router.get("/")
+@router.get("")
 def get_suggestions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     month_prefix = datetime.utcnow().strftime("%Y-%m")
     txs = (
