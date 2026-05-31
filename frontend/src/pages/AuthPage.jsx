@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { authenticateWithBiometric, getBiometricSessionToken, isBiometricEnabled, isBiometricSupported, saveBiometricSessionToken } from "../services/biometrics";
 import { getApiBaseUrl, setApiBaseUrl } from "../services/api";
+import { recordActivity, unlockSession } from "../services/securityLock";
 
 const PRODUCTION_API_URL = "https://financeflow-api-m78a.onrender.com/api/v1";
 
@@ -39,6 +40,8 @@ export default function AuthPage() {
       const { data } = await api.post("/auth/login", { email: normalizedEmail, password: form.password });
       localStorage.setItem("token", data.access_token);
       saveBiometricSessionToken(data.access_token);
+      unlockSession();
+      recordActivity();
       navigate("/app/dashboard");
     } catch (err) {
       const detail = err?.response?.data?.detail;
@@ -72,6 +75,8 @@ export default function AuthPage() {
         return;
       }
       localStorage.setItem("token", savedToken);
+      unlockSession();
+      recordActivity();
       navigate("/app/dashboard");
     } catch (err) {
       setError(err?.message || "No se pudo iniciar sesión con biometría.");

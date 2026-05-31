@@ -1,7 +1,8 @@
 import { useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
+import { getLastActivityAt, getLockConfig, isSessionLocked, lockSession, recordActivity } from "../services/securityLock";
 
 const isEditableElement = (element) => {
   if (!element || !(element instanceof HTMLElement)) {
@@ -13,6 +14,8 @@ const isEditableElement = (element) => {
 };
 
 export default function AppLayout() {
+  const navigate = useNavigate();
+
   useEffect(() => {
     const blurActiveFieldOnScroll = () => {
       if (window.innerWidth >= 1024) {
@@ -33,6 +36,36 @@ export default function AppLayout() {
       window.removeEventListener("touchmove", blurActiveFieldOnScroll);
     };
   }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return undefined;
+    }
+
+    const registerActivity = () => recordActivity();
+    const events = ["mousedown", "keydown", "touchstart", "scroll"];
+    events.forEach((eventName) => window.addEventListener(eventName, registerActivity, { passive: true }));
+    recordActivity();
+
+    const intervalId = window.setInterval(() => {
+      const { pinEnabled, inactivityLockMinutes } = getLockConfig();
+      if (!pinEnabled || isSessionLocked()) {
+        return;
+      }
+
+      const elapsedMs = Date.now() - getLastActivityAt();
+      if (elapsedMs >= inactivityLockMinutes * 60 * 1000) {
+        lockSession();
+        navigate("/unlock", { replace: true });
+      }
+    }, 15000);
+
+    return () => {
+      events.forEach((eventName) => window.removeEventListener(eventName, registerActivity));
+      window.clearInterval(intervalId);
+    };
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-canvas text-ink">

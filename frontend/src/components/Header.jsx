@@ -2,6 +2,7 @@ import { Bell, LogOut, Search, Settings } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { clearSessionLockState } from "../services/securityLock";
 
 const SETTINGS_KEY = "financeflow.settings.v1";
 const SEARCH_HISTORY_KEY = "financeflow.search.history.v1";
@@ -273,6 +274,7 @@ export default function Header() {
 
   const logout = () => {
     localStorage.removeItem("token");
+    clearSessionLockState();
     setOpenMenu(false);
     navigate("/auth");
   };
@@ -407,7 +409,7 @@ export default function Header() {
       </div>
       <button
         type="button"
-        onClick={() => navigate("/app/payments")}
+        onClick={() => navigate("/app/notifications")}
         className="relative rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-100"
         aria-label={unreadCount ? `Notificaciones pendientes: ${unreadCount}` : "Notificaciones"}
       >

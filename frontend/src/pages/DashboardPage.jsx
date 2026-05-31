@@ -48,10 +48,50 @@ const readCachedSummary = () => {
   }
 };
 
+const parseIsoDate = (value) => {
+  if (!value || typeof value !== "string") {
+    return null;
+  }
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) {
+    return null;
+  }
+  return new Date(year, month - 1, day);
+};
+
+const buildCalendarCells = (year, month, eventMap) => {
+  const first = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstWeekdayMondayFirst = (first.getDay() + 6) % 7;
+
+  const cells = [];
+  for (let index = 0; index < firstWeekdayMondayFirst; index += 1) {
+    cells.push({ key: `empty-${index}`, day: null, items: [] });
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    cells.push({ key: `day-${day}`, day, items: eventMap[day] || [] });
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push({ key: `tail-${cells.length}`, day: null, items: [] });
+  }
+
+  return cells;
+};
+
+const monthLabels = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+const weekdayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
 export default function DashboardPage() {
   const [summary, setSummary] = useState(() => readCachedSummary());
   const [goals, setGoals] = useState([]);
+  const [plannedItems, setPlannedItems] = useState([]);
   const [whatIf, setWhatIf] = useState({ incomeDeltaPct: 0, expensesDeltaPct: 0 });
+  const [calendarDate, setCalendarDate] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
 
   useEffect(() => {
     api
@@ -69,6 +109,11 @@ export default function DashboardPage() {
       .get("/goals")
       .then((res) => setGoals(res.data || []))
       .catch(() => setGoals([]));
+
+    api
+      .get("/transactions/planned")
+      .then((res) => setPlannedItems(res.data || []))
+      .catch(() => setPlannedItems([]));
   }, []);
 
   const categoryData = Object.entries(summary.expenses_by_category || {}).map(([name, value]) => ({ name, value }));
@@ -83,6 +128,44 @@ export default function DashboardPage() {
   const simulatedIncome = summary.monthly_income * (1 + Number(whatIf.incomeDeltaPct || 0) / 100);
   const simulatedExpenses = summary.monthly_expenses * (1 + Number(whatIf.expensesDeltaPct || 0) / 100);
   const simulatedCapacity = simulatedIncome > 0 ? (((simulatedIncome - simulatedExpenses) / simulatedIncome) * 100) : 0;
+
+  const eventsByDay = {};
+  plannedItems.forEach((item) => {
+    const parsed = parseIsoDate(item.due_date);
+    if (!parsed || parsed.getFullYear() !== calendarDate.year || parsed.getMonth() !== calendarDate.month) {
+      return;
+    }
+    const day = parsed.getDate();
+    eventsByDay[day] = eventsByDay[day] || [];
+    eventsByDay[day].push({
+      type: "expense",
+      label: item.description,
+      amount: item.amount,
+    });
+  });
+
+  goals.forEach((goal) => {
+    const parsed = parseIsoDate(goal.target_date);
+    if (!parsed || parsed.getFullYear() !== calendarDate.year || parsed.getMonth() !== calendarDate.month) {
+      return;
+    }
+    const day = parsed.getDate();
+    eventsByDay[day] = eventsByDay[day] || [];
+    eventsByDay[day].push({
+      type: "goal",
+      label: `Meta: ${goal.title}`,
+      amount: goal.monthly_required,
+    });
+  });
+
+  const calendarCells = buildCalendarCells(calendarDate.year, calendarDate.month, eventsByDay);
+
+  const moveCalendarMonth = (step) => {
+    setCalendarDate((prev) => {
+      const nextDate = new Date(prev.year, prev.month + step, 1);
+      return { year: nextDate.getFullYear(), month: nextDate.getMonth() };
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -193,6 +276,44 @@ export default function DashboardPage() {
               </article>
             )) : <p className="text-sm text-slate-500">Sin metas aún. Crea una en la pestaña Metas.</p>}
           </div>
+        </div>
+      </div>
+
+      <div className="panel p-5">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-slate-700">Calendario Financiero</h2>
+          <div className="flex items-center gap-2 text-sm">
+            <button type="button" onClick={() => moveCalendarMonth(-1)} className="rounded-lg border border-slate-200 px-2 py-1 text-slate-700 hover:bg-slate-100">Anterior</button>
+            <span className="min-w-40 text-center font-semibold text-slate-700">{monthLabels[calendarDate.month]} {calendarDate.year}</span>
+            <button type="button" onClick={() => moveCalendarMonth(1)} className="rounded-lg border border-slate-200 px-2 py-1 text-slate-700 hover:bg-slate-100">Siguiente</button>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+          {weekdayLabels.map((weekday) => (
+            <div key={weekday}>{weekday}</div>
+          ))}
+        </div>
+
+        <div className="mt-2 grid grid-cols-7 gap-2">
+          {calendarCells.map((cell) => (
+            <article key={cell.key} className={`min-h-24 rounded-xl border p-2 ${cell.day ? "border-slate-200 bg-white" : "border-transparent bg-transparent"}`}>
+              {cell.day ? (
+                <>
+                  <p className="text-xs font-semibold text-slate-600">{cell.day}</p>
+                  <div className="mt-1 space-y-1">
+                    {cell.items.slice(0, 2).map((entry) => (
+                      <div key={`${cell.key}-${entry.label}`} className={`rounded px-1.5 py-0.5 text-[10px] ${entry.type === "goal" ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"}`}>
+                        <p className="truncate">{entry.label}</p>
+                        <p className="truncate font-semibold">{formatCurrency(entry.amount || 0)}</p>
+                      </div>
+                    ))}
+                    {cell.items.length > 2 ? <p className="text-[10px] text-slate-500">+{cell.items.length - 2} evento(s)</p> : null}
+                  </div>
+                </>
+              ) : null}
+            </article>
+          ))}
         </div>
       </div>
 

@@ -19,6 +19,7 @@ class PlannedExpense(Base):
     planning_mode: Mapped[str] = mapped_column(String(20), nullable=False, default="monthly")
     reminder_days_before: Mapped[int] = mapped_column(nullable=False, default=7)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    reminder_read_due_date: Mapped[date] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="planned_expenses")

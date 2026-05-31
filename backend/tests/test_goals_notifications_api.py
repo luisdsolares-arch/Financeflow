@@ -47,4 +47,19 @@ def test_goals_and_notifications(client):
     assert notifications.status_code == 200
     body = notifications.json()
     assert body["unread_count"] >= 1
-    assert any(item["source"] == "planned_expense" for item in body["items"])
+    planned_item = next((item for item in body["items"] if item["source"] == "planned_expense"), None)
+    assert planned_item is not None
+
+    mark_read = client.patch(
+        f"/api/v1/notifications/{planned_item['id']}",
+        headers=headers,
+        json={"is_read": True},
+    )
+    assert mark_read.status_code == 200
+    assert mark_read.json()["is_read"] is True
+
+    refreshed = client.get("/api/v1/notifications", headers=headers)
+    assert refreshed.status_code == 200
+    refreshed_planned = next((item for item in refreshed.json()["items"] if item["id"] == planned_item["id"]), None)
+    assert refreshed_planned is not None
+    assert refreshed_planned["is_read"] is True

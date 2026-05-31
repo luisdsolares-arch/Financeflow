@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { clearBiometricConfig, enableBiometricLogin, isBiometricEnabled, isBiometricSupported } from "../services/biometrics";
+import { clearSessionLockState, disablePin, savePin } from "../services/securityLock";
 
 const SETTINGS_KEY = "financeflow.settings.v1";
 const PROFILE_UPDATED_EVENT = "financeflow:profile-updated";
@@ -20,6 +21,9 @@ const defaultSettings = {
   payment_assistant_enabled: true,
   default_payment_limit: 1200,
   dark_mode: false,
+  security_pin_enabled: false,
+  security_pin_hash: "",
+  inactivity_lock_minutes: 5,
 };
 
 const applyTheme = (isDarkMode) => {
@@ -37,13 +41,16 @@ export default function SettingsPage() {
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [pinDraft, setPinDraft] = useState("");
+  const [pinConfirm, setPinConfirm] = useState("");
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
         const response = await api.get("/settings");
-        setSettings((prev) => ({ ...prev, ...response.data }));
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(response.data));
+        const merged = { ...defaultSettings, ...response.data, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") };
+        setSettings(merged);
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
         broadcastProfileName(response.data.profile_name);
         applyTheme(Boolean(response.data.dark_mode));
         return;
@@ -94,9 +101,12 @@ export default function SettingsPage() {
   const saveSettings = async (values = settings) => {
     setIsSaving(true);
     try {
-      const response = await api.put("/settings", values);
-      setSettings((prev) => ({ ...prev, ...response.data }));
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(response.data));
+      const payload = { ...values };
+      delete payload.security_pin_hash;
+      const response = await api.put("/settings", payload);
+      const merged = { ...values, ...response.data };
+      setSettings(merged);
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
       broadcastProfileName(response.data.profile_name || values.profile_name);
       applyTheme(Boolean(response.data.dark_mode));
       setStatus("Configuración guardada correctamente en todos tus dispositivos.");
@@ -128,7 +138,44 @@ export default function SettingsPage() {
 
   const logout = () => {
     localStorage.removeItem("token");
+    clearSessionLockState();
     navigate("/auth");
+  };
+
+  const applyPinChanges = () => {
+    if (!settings.security_pin_enabled) {
+      disablePin();
+      setSettings((prev) => ({ ...prev, security_pin_hash: "" }));
+      setPinDraft("");
+      setPinConfirm("");
+      setStatus("PIN desactivado.");
+      return true;
+    }
+
+    if (!pinDraft && settings.security_pin_hash) {
+      return true;
+    }
+
+    if (!/^\d{4,6}$/.test(pinDraft)) {
+      setStatus("El PIN debe tener entre 4 y 6 dígitos.");
+      return false;
+    }
+    if (pinDraft !== pinConfirm) {
+      setStatus("El PIN y su confirmación no coinciden.");
+      return false;
+    }
+
+    const nextHash = savePin(pinDraft);
+    if (!nextHash) {
+      setStatus("No se pudo guardar el PIN.");
+      return false;
+    }
+
+    setSettings((prev) => ({ ...prev, security_pin_hash: nextHash }));
+    setPinDraft("");
+    setPinConfirm("");
+    setStatus("PIN configurado correctamente.");
+    return true;
   };
 
   const connectBank = async () => {
@@ -261,6 +308,51 @@ export default function SettingsPage() {
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
+              checked={settings.security_pin_enabled}
+              onChange={(e) => updateField("security_pin_enabled", e.target.checked)}
+            />
+            Bloquear app con PIN
+          </label>
+          {settings.security_pin_enabled ? (
+            <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <label className="block text-sm text-slate-600">
+                Nuevo PIN (4-6 dígitos)
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                  value={pinDraft}
+                  onChange={(e) => setPinDraft(e.target.value.replace(/\D+/g, ""))}
+                />
+              </label>
+              <label className="block text-sm text-slate-600">
+                Confirmar PIN
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                  value={pinConfirm}
+                  onChange={(e) => setPinConfirm(e.target.value.replace(/\D+/g, ""))}
+                />
+              </label>
+              <label className="block text-sm text-slate-600">
+                Bloqueo por inactividad (minutos)
+                <input
+                  type="number"
+                  min="1"
+                  max="120"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
+                  value={settings.inactivity_lock_minutes}
+                  onChange={(e) => updateField("inactivity_lock_minutes", Number(e.target.value))}
+                />
+              </label>
+            </div>
+          ) : null}
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
               checked={biometricEnabled}
               disabled={!biometricAvailable}
               onChange={(e) => toggleBiometric(e.target.checked)}
@@ -324,7 +416,13 @@ export default function SettingsPage() {
       </div>
 
       <div className="panel flex flex-wrap items-center gap-2 p-4">
-        <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={() => saveSettings()} disabled={isSaving}>
+        <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={() => {
+          const pinOk = applyPinChanges();
+          if (!pinOk) {
+            return;
+          }
+          void saveSettings();
+        }} disabled={isSaving}>
           {isSaving ? "Guardando..." : "Guardar cambios"}
         </button>
         <button className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60" onClick={resetSettings} disabled={isSaving}>

@@ -130,6 +130,7 @@ def create_planned_expense(payload: PlannedExpenseCreate, db: Session = Depends(
         planning_mode=payload.planning_mode,
         reminder_days_before=payload.reminder_days_before,
         is_active=True,
+        reminder_read_due_date=None,
         created_at=datetime.now(timezone.utc),
     )
     db.add(row)
@@ -161,6 +162,7 @@ def mark_planned_expense_paid(planned_expense_id: int, db: Session = Depends(get
 
     base_date = row.due_date if row.due_date >= date.today() else date.today()
     row.due_date = _next_due_date(base_date, row.recurrence_type)
+    row.reminder_read_due_date = None
     db.commit()
     db.refresh(row)
     return {
