@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
-from app.models import bank_account, budget, transaction, user, user_settings  # noqa: F401
+from app.models import bank_account, budget, planned_expense, transaction, user, user_settings  # noqa: F401
 
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_finance.db"

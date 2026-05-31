@@ -1,4 +1,5 @@
 from datetime import date
+from math import ceil
 
 from pydantic import BaseModel, Field
 
@@ -11,6 +12,31 @@ class TransactionCreate(BaseModel):
     category: str = Field(min_length=2, max_length=80)
     type: str = Field(pattern="^(income|expense)$")
     is_automated: bool = False
+
+
+class PlannedExpenseCreate(BaseModel):
+    description: str = Field(min_length=2, max_length=255)
+    category: str = Field(min_length=2, max_length=80)
+    amount: float = Field(gt=0)
+    due_date: date
+    recurrence_type: str = Field(pattern="^(one_time|weekly|monthly)$")
+    planning_mode: str = Field(pattern="^(weekly|monthly)$")
+    reminder_days_before: int = Field(ge=1, le=60, default=7)
+
+
+class PlannedExpenseResponse(BaseModel):
+    id: int
+    description: str
+    category: str
+    amount: float
+    due_date: date
+    recurrence_type: str
+    planning_mode: str
+    reminder_days_before: int
+    is_active: bool
+    days_until_due: int
+    recommended_weekly_saving: float
+    recommended_monthly_saving: float
 
 
 class BudgetCreate(BaseModel):
