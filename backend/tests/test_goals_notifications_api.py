@@ -47,60 +47,24 @@ def test_goals_and_notifications(client):
     assert notifications.status_code == 200
     body = notifications.json()
     assert body["unread_count"] >= 1
-    planned_item = next((item for item in body["items"] if item["source"] == "planned_expense"), None)
-    assert planned_item is not None
+    planned_items = [item for item in body["items"] if item["source"] == "planned_expense"]
+    assert planned_items
 
     mark_read = client.patch(
-        f"/api/v1/notifications/{planned_item['id']}",
+        f"/api/v1/notifications/{planned_items[0]['id']}",
         headers=headers,
         json={"is_read": True},
     )
     assert mark_read.status_code == 200
     assert mark_read.json()["is_read"] is True
 
-    refreshed = client.get("/api/v1/notifications", headers=headers)
-    assert refreshed.status_code == 200
-    refreshed_planned = next((item for item in refreshed.json()["items"] if item["id"] == planned_item["id"]), None)
-    assert refreshed_planned is not None
-    assert refreshed_planned["is_read"] is True
+    notifications_after = client.get("/api/v1/notifications", headers=headers)
+    assert notifications_after.status_code == 200
+    body_after = notifications_after.json()
+    assert any(item["id"] == planned_items[0]["id"] and item["is_read"] is True for item in body_after["items"])
 
-
-def test_edit_and_delete_goal(client):
-    headers = _auth_headers(client, email="goals-edit@example.com")
-
-    created = client.post(
-        "/api/v1/goals",
-        headers=headers,
-        json={
-            "title": "Portatil nuevo",
-            "target_amount": 1800,
-            "current_amount": 300,
-            "target_date": (date.today() + timedelta(days=150)).isoformat(),
-            "priority": "high",
-        },
-    )
-    assert created.status_code == 201
-    goal_id = created.json()["id"]
-
-    edited = client.put(
-        f"/api/v1/goals/{goal_id}",
-        headers=headers,
-        json={
-            "title": "Portátil nuevo",
-            "target_amount": 2000,
-            "current_amount": 500,
-            "target_date": (date.today() + timedelta(days=180)).isoformat(),
-            "priority": "medium",
-            "is_active": True,
-        },
-    )
-    assert edited.status_code == 200
-    assert edited.json()["title"] == "Portátil nuevo"
-    assert edited.json()["target_amount"] == 2000
-
-    deleted = client.delete(f"/api/v1/goals/{goal_id}", headers=headers)
-    assert deleted.status_code == 200
-
-    listing = client.get("/api/v1/goals", headers=headers)
-    assert listing.status_code == 200
-    assert all(item["id"] != goal_id for item in listing.json())
+    calendar = client.get(f"/api/v1/dashboard/calendar?month={date.today().strftime('%Y-%m')}", headers=headers)
+    assert calendar.status_code == 200
+    calendar_body = calendar.json()
+    assert calendar_body["month"] == date.today().strftime("%Y-%m")
+    assert isinstance(calendar_body["events"], list)

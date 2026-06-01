@@ -15,12 +15,12 @@ export default function NotificationsPage() {
     loadNotifications();
   }, []);
 
-  const toggleRead = async (item) => {
+  const markAsRead = async (notificationId) => {
     try {
-      await api.patch(`/notifications/${item.id}`, { is_read: !item.is_read });
-      loadNotifications();
+      await api.patch(`/notifications/${notificationId}`, { is_read: true });
+      setItems((prev) => prev.map((item) => (item.id === notificationId ? { ...item, is_read: true } : item)));
     } catch {
-      // Ignore action failures to keep list visible.
+      loadNotifications();
     }
   };
 
@@ -33,20 +33,22 @@ export default function NotificationsPage() {
       <div className="panel p-5">
         <div className="space-y-2">
           {items.length ? items.map((item) => (
-            <article key={item.id} className={`rounded-xl border p-3 text-sm ${item.kind === "blocked" ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-slate-800">{item.source === "planned_expense" ? "Gasto planificado" : "Pago automático"}</p>
-                  <p className="text-slate-700">{item.message}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => toggleRead(item)}
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${item.is_read ? "bg-slate-200 text-slate-700" : "bg-emerald-100 text-emerald-700"}`}
-                >
-                  {item.is_read ? "Marcar no leída" : "Marcar leída"}
-                </button>
+            <article key={item.id} className={`rounded-xl border p-3 text-sm ${item.is_read ? "border-slate-200 bg-slate-50" : item.kind === "blocked" ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`}>
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-semibold text-slate-800">{item.source === "planned_expense" ? "Gasto planificado" : "Pago automático"}</p>
+                {!item.is_read ? (
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                    onClick={() => markAsRead(item.id)}
+                  >
+                    Marcar leída
+                  </button>
+                ) : (
+                  <span className="text-xs font-semibold text-slate-500">Leída</span>
+                )}
               </div>
+              <p className="text-slate-700">{item.message}</p>
             </article>
           )) : <p className="text-sm text-slate-500">No hay notificaciones por ahora.</p>}
         </div>

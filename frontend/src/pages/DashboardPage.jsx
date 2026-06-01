@@ -17,6 +17,7 @@ import { formatCurrency } from "../services/currency";
 
 const palette = ["#0F172A", "#10B981", "#EF4444", "#334155", "#94A3B8"];
 const DASHBOARD_SUMMARY_CACHE_KEY = "financeflow.dashboard.summary.v1";
+const DAY_LABELS = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"];
 
 const emptySummary = {
   net_balance: 0,
@@ -48,50 +49,12 @@ const readCachedSummary = () => {
   }
 };
 
-const parseIsoDate = (value) => {
-  if (!value || typeof value !== "string") {
-    return null;
-  }
-  const [year, month, day] = value.split("-").map(Number);
-  if (!year || !month || !day) {
-    return null;
-  }
-  return new Date(year, month - 1, day);
-};
-
-const buildCalendarCells = (year, month, eventMap) => {
-  const first = new Date(year, month, 1);
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstWeekdayMondayFirst = (first.getDay() + 6) % 7;
-
-  const cells = [];
-  for (let index = 0; index < firstWeekdayMondayFirst; index += 1) {
-    cells.push({ key: `empty-${index}`, day: null, items: [] });
-  }
-
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    cells.push({ key: `day-${day}`, day, items: eventMap[day] || [] });
-  }
-
-  while (cells.length % 7 !== 0) {
-    cells.push({ key: `tail-${cells.length}`, day: null, items: [] });
-  }
-
-  return cells;
-};
-
-const monthLabels = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-const weekdayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-
 export default function DashboardPage() {
   const [summary, setSummary] = useState(() => readCachedSummary());
   const [goals, setGoals] = useState([]);
-  const [plannedItems, setPlannedItems] = useState([]);
   const [whatIf, setWhatIf] = useState({ incomeDeltaPct: 0, expensesDeltaPct: 0 });
-  const [calendarDate, setCalendarDate] = useState(() => {
-    const now = new Date();
-    return { year: now.getFullYear(), month: now.getMonth() };
-  });
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [calendarEvents, setCalendarEvents] = useState([]);
 
   useEffect(() => {
     api
@@ -109,12 +72,14 @@ export default function DashboardPage() {
       .get("/goals")
       .then((res) => setGoals(res.data || []))
       .catch(() => setGoals([]));
-
-    api
-      .get("/transactions/planned")
-      .then((res) => setPlannedItems(res.data || []))
-      .catch(() => setPlannedItems([]));
   }, []);
+
+  useEffect(() => {
+    api
+      .get(`/dashboard/calendar?month=${calendarMonth}`)
+      .then((res) => setCalendarEvents(res.data?.events || []))
+      .catch(() => setCalendarEvents([]));
+  }, [calendarMonth]);
 
   const categoryData = Object.entries(summary.expenses_by_category || {}).map(([name, value]) => ({ name, value }));
   const timelineData = [
@@ -129,47 +94,28 @@ export default function DashboardPage() {
   const simulatedExpenses = summary.monthly_expenses * (1 + Number(whatIf.expensesDeltaPct || 0) / 100);
   const simulatedCapacity = simulatedIncome > 0 ? (((simulatedIncome - simulatedExpenses) / simulatedIncome) * 100) : 0;
 
-  const eventsByDay = {};
-  plannedItems.forEach((item) => {
-    const parsed = parseIsoDate(item.due_date);
-    if (!parsed || parsed.getFullYear() !== calendarDate.year || parsed.getMonth() !== calendarDate.month) {
-      return;
+  const firstDayDate = new Date(`${calendarMonth}-01T00:00:00`);
+  const daysInMonth = new Date(firstDayDate.getFullYear(), firstDayDate.getMonth() + 1, 0).getDate();
+  const startWeekday = (firstDayDate.getDay() + 6) % 7;
+  const calendarCells = [
+    ...Array.from({ length: startWeekday }, (_, idx) => ({ key: `pad-${idx}`, day: null })),
+    ...Array.from({ length: daysInMonth }, (_, idx) => ({ key: `day-${idx + 1}`, day: idx + 1 })),
+  ];
+  const eventsByDay = calendarEvents.reduce((acc, item) => {
+    const day = Number((item.date || "").split("-")[2]);
+    if (!day) {
+      return acc;
     }
-    const day = parsed.getDate();
-    eventsByDay[day] = eventsByDay[day] || [];
-    eventsByDay[day].push({
-      type: "expense",
-      label: item.description,
-      amount: item.amount,
-    });
-  });
-
-  goals.forEach((goal) => {
-    const parsed = parseIsoDate(goal.target_date);
-    if (!parsed || parsed.getFullYear() !== calendarDate.year || parsed.getMonth() !== calendarDate.month) {
-      return;
+    if (!acc[day]) {
+      acc[day] = [];
     }
-    const day = parsed.getDate();
-    eventsByDay[day] = eventsByDay[day] || [];
-    eventsByDay[day].push({
-      type: "goal",
-      label: `Meta: ${goal.title}`,
-      amount: goal.monthly_required,
-    });
-  });
-
-  const calendarCells = buildCalendarCells(calendarDate.year, calendarDate.month, eventsByDay);
-
-  const moveCalendarMonth = (step) => {
-    setCalendarDate((prev) => {
-      const nextDate = new Date(prev.year, prev.month + step, 1);
-      return { year: nextDate.getFullYear(), month: nextDate.getMonth() };
-    });
-  };
+    acc[day].push(item);
+    return acc;
+  }, {});
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Balance Total Neto" value={formatCurrency(summary.net_balance)} />
         <KpiCard label="Ingresos del Mes" value={formatCurrency(summary.monthly_income)} tone="success" />
         <KpiCard label="Gastos del Mes" value={formatCurrency(summary.monthly_expenses)} tone="danger" />
@@ -180,17 +126,17 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="panel p-4 sm:p-5 lg:p-6">
-        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+      <div className="panel p-5">
+        <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-slate-700">Próximos Gastos Planificados</h2>
-          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 sm:text-[13px]">
+          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
             Reserva mensual sugerida: {formatCurrency(summary.projected_monthly_reserve || 0)}
           </span>
         </div>
         <div className="mt-3 space-y-2">
           {summary.upcoming_planned_expenses?.length ? (
             summary.upcoming_planned_expenses.map((item) => (
-              <article key={item.id} className="rounded-xl border border-slate-200 p-3 text-xs sm:text-sm">
+              <article key={item.id} className="rounded-xl border border-slate-200 p-3 text-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-slate-800">{item.description}</p>
@@ -209,10 +155,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <div className="panel p-4 sm:p-5 lg:p-6 md:col-span-2 xl:col-span-2">
+      <div className="grid gap-4 xl:grid-cols-3">
+        <div className="panel p-5 xl:col-span-2">
           <h2 className="text-sm font-semibold text-slate-700">Evolucion del Balance</h2>
-          <div className="mt-4 h-64 sm:h-72 lg:h-80">
+          <div className="mt-4 h-72">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={timelineData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -225,9 +171,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="panel p-4 sm:p-5 lg:p-6">
+        <div className="panel p-5">
           <h2 className="text-sm font-semibold text-slate-700">Gastos por Categoria</h2>
-          <div className="mt-4 h-64 sm:h-72 lg:h-80">
+          <div className="mt-4 h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={categoryData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={95}>
@@ -242,8 +188,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="panel space-y-3 p-4 sm:p-5 lg:p-6">
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="panel p-5 space-y-3">
           <h2 className="text-sm font-semibold text-slate-700">Simulador "Qué pasa si"</h2>
           <label className="block text-sm text-slate-600">
             Variación de ingresos (%)
@@ -260,7 +206,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="panel p-4 sm:p-5 lg:p-6">
+        <div className="panel p-5">
           <h2 className="text-sm font-semibold text-slate-700">Progreso de Metas</h2>
           <div className="mt-3 space-y-2">
             {goals.length ? goals.slice(0, 4).map((goal) => (
@@ -279,47 +225,51 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="panel p-4 sm:p-5 lg:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-sm font-semibold text-slate-700">Calendario Financiero</h2>
-          <div className="flex w-full items-center justify-between gap-2 text-sm sm:w-auto sm:justify-start">
-            <button type="button" onClick={() => moveCalendarMonth(-1)} className="shrink-0 rounded-lg border border-slate-200 px-2 py-1 text-slate-700 hover:bg-slate-100">Anterior</button>
-            <span className="min-w-0 flex-1 text-center text-xs font-semibold text-slate-700 sm:min-w-40 sm:flex-none sm:text-sm">{monthLabels[calendarDate.month]} {calendarDate.year}</span>
-            <button type="button" onClick={() => moveCalendarMonth(1)} className="shrink-0 rounded-lg border border-slate-200 px-2 py-1 text-slate-700 hover:bg-slate-100">Siguiente</button>
-          </div>
+      <div className="panel p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-slate-700">Calendario Financiero Mensual</h2>
+          <input
+            type="month"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            value={calendarMonth}
+            onChange={(event) => setCalendarMonth(event.target.value)}
+          />
         </div>
 
-        <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:gap-2 sm:text-xs">
-          {weekdayLabels.map((weekday) => (
-            <div key={weekday}>{weekday}</div>
+        <div className="mt-4 grid grid-cols-7 gap-2">
+          {DAY_LABELS.map((label) => (
+            <div key={label} className="rounded-lg bg-slate-100 px-2 py-1 text-center text-xs font-semibold text-slate-600">{label}</div>
           ))}
-        </div>
 
-        <div className="mt-2 grid grid-cols-7 gap-1 sm:gap-2">
-          {calendarCells.map((cell) => (
-            <article key={cell.key} className={`min-h-16 rounded-lg border p-1.5 sm:min-h-20 sm:rounded-xl sm:p-2 lg:min-h-24 ${cell.day ? "border-slate-200 bg-white" : "border-transparent bg-transparent"}`}>
-              {cell.day ? (
-                <>
-                  <p className="text-[10px] font-semibold text-slate-600 sm:text-xs">{cell.day}</p>
-                  <div className="mt-1 space-y-0.5 sm:space-y-1">
-                    {cell.items.slice(0, 2).map((entry, index) => (
-                      <div key={`${cell.key}-${entry.type}-${entry.label}-${index}`} className={`rounded px-1 py-0.5 text-[9px] sm:px-1.5 sm:text-[10px] ${entry.type === "goal" ? "bg-indigo-100 text-indigo-700" : "bg-emerald-100 text-emerald-700"}`}>
-                        <p className="truncate">{entry.label}</p>
-                        <p className="truncate font-semibold">{formatCurrency(entry.amount || 0)}</p>
-                      </div>
-                    ))}
-                    {cell.items.length > 2 ? <p className="text-[10px] text-slate-500">+{cell.items.length - 2} evento(s)</p> : null}
-                  </div>
-                </>
-              ) : null}
-            </article>
-          ))}
+          {calendarCells.map((cell) => {
+            if (!cell.day) {
+              return <div key={cell.key} className="min-h-24 rounded-lg border border-transparent" />;
+            }
+            const dayEvents = eventsByDay[cell.day] || [];
+            return (
+              <div key={cell.key} className="min-h-24 rounded-lg border border-slate-200 bg-white p-2">
+                <p className="text-xs font-semibold text-slate-700">{cell.day}</p>
+                <div className="mt-1 space-y-1">
+                  {dayEvents.slice(0, 3).map((event, index) => (
+                    <div
+                      key={`${event.source}-${event.title}-${index}`}
+                      className={`truncate rounded px-1.5 py-0.5 text-[11px] font-medium ${event.source === "planned_expense" ? "bg-amber-100 text-amber-800" : event.kind === "income" ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}
+                      title={`${event.title} - ${formatCurrency(event.amount)}`}
+                    >
+                      {event.title}
+                    </div>
+                  ))}
+                  {dayEvents.length > 3 ? <p className="text-[10px] text-slate-500">+{dayEvents.length - 3} más</p> : null}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <div className="panel overflow-x-auto p-4 sm:p-5 lg:p-6">
+      <div className="panel overflow-x-auto p-5">
         <h2 className="text-sm font-semibold text-slate-700">Ultimas Transacciones</h2>
-        <table className="mt-4 w-full text-left text-xs sm:text-sm">
+        <table className="mt-4 w-full text-left text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-slate-500">
               <th className="pb-2">Fecha</th>
@@ -332,7 +282,7 @@ export default function DashboardPage() {
           <tbody>
             {summary.recent_transactions?.map((item) => (
               <tr key={`${item.date}-${item.concept}`} className="border-b border-slate-100">
-                <td className="py-2 sm:py-3">{item.date}</td>
+                <td className="py-3">{item.date}</td>
                 <td>{item.concept}</td>
                 <td>{item.category}</td>
                 <td>

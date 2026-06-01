@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
-import { clearBiometricConfig, enableBiometricLogin, getBiometricAvailability, isBiometricEnabled } from "../services/biometrics";
-import { clearSessionLockState, disablePin, savePin } from "../services/securityLock";
+import { clearBiometricConfig, enableBiometricLogin, isBiometricEnabled, isBiometricSupported } from "../services/biometrics";
 
 const SETTINGS_KEY = "financeflow.settings.v1";
 const PROFILE_UPDATED_EVENT = "financeflow:profile-updated";
+const PIN_KEY = "financeflow.security.pin.v1";
+const LOCK_MINUTES_KEY = "financeflow.security.lock_minutes.v1";
+
 const defaultSettings = {
   profile_name: "Andrea Ruiz",
   profile_email: "demo.app@example.com",
@@ -20,9 +22,6 @@ const defaultSettings = {
   payment_assistant_enabled: true,
   default_payment_limit: 1200,
   dark_mode: false,
-  security_pin_enabled: false,
-  security_pin_hash: "",
-  inactivity_lock_minutes: 5,
 };
 
 const applyTheme = (isDarkMode) => {
@@ -39,20 +38,18 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState(defaultSettings);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
-  const [biometricReason, setBiometricReason] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [pinDraft, setPinDraft] = useState("");
+  const [pin, setPin] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
-  const [settingsTapCount, setSettingsTapCount] = useState(0);
-  const [lastSettingsTap, setLastSettingsTap] = useState(0);
+  const [pinConfigured, setPinConfigured] = useState(() => Boolean(localStorage.getItem(PIN_KEY)));
+  const [lockMinutes, setLockMinutes] = useState(() => Number(localStorage.getItem(LOCK_MINUTES_KEY) || 5));
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
         const response = await api.get("/settings");
-        const merged = { ...defaultSettings, ...response.data, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") };
-        setSettings(merged);
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+        setSettings((prev) => ({ ...prev, ...response.data }));
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(response.data));
         broadcastProfileName(response.data.profile_name);
         applyTheme(Boolean(response.data.dark_mode));
         return;
@@ -83,21 +80,8 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    let active = true;
-    const loadBiometricState = async () => {
-      const availability = await getBiometricAvailability();
-      if (!active) {
-        return;
-      }
-      setBiometricAvailable(availability.supported);
-      setBiometricReason(availability.reason || "");
-      setBiometricEnabled(isBiometricEnabled());
-    };
-
-    void loadBiometricState();
-    return () => {
-      active = false;
-    };
+    setBiometricAvailable(isBiometricSupported());
+    setBiometricEnabled(isBiometricEnabled());
   }, []);
 
   const updateField = (key, value) => {
@@ -116,12 +100,9 @@ export default function SettingsPage() {
   const saveSettings = async (values = settings) => {
     setIsSaving(true);
     try {
-      const payload = { ...values };
-      delete payload.security_pin_hash;
-      const response = await api.put("/settings", payload);
-      const merged = { ...values, ...response.data };
-      setSettings(merged);
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+      const response = await api.put("/settings", values);
+      setSettings((prev) => ({ ...prev, ...response.data }));
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(response.data));
       broadcastProfileName(response.data.profile_name || values.profile_name);
       applyTheme(Boolean(response.data.dark_mode));
       setStatus("Configuración guardada correctamente en todos tus dispositivos.");
@@ -153,46 +134,7 @@ export default function SettingsPage() {
 
   const logout = () => {
     localStorage.removeItem("token");
-    clearSessionLockState();
     navigate("/auth");
-  };
-
-  const applyPinChanges = () => {
-    if (!settings.security_pin_enabled) {
-      disablePin();
-      const nextValues = { ...settings, security_pin_hash: "" };
-      setSettings(nextValues);
-      setPinDraft("");
-      setPinConfirm("");
-      setStatus("PIN desactivado.");
-      return { ok: true, values: nextValues };
-    }
-
-    if (!pinDraft && settings.security_pin_hash) {
-      return { ok: true, values: settings };
-    }
-
-    if (!/^\d{4,6}$/.test(pinDraft)) {
-      setStatus("El PIN debe tener entre 4 y 6 dígitos.");
-      return { ok: false, values: settings };
-    }
-    if (pinDraft !== pinConfirm) {
-      setStatus("El PIN y su confirmación no coinciden.");
-      return { ok: false, values: settings };
-    }
-
-    const nextHash = savePin(pinDraft);
-    if (!nextHash) {
-      setStatus("No se pudo guardar el PIN.");
-      return { ok: false, values: settings };
-    }
-
-    const nextValues = { ...settings, security_pin_hash: nextHash };
-    setSettings(nextValues);
-    setPinDraft("");
-    setPinConfirm("");
-    setStatus("PIN configurado correctamente.");
-    return { ok: true, values: nextValues };
   };
 
   const connectBank = async () => {
@@ -232,28 +174,55 @@ export default function SettingsPage() {
     }
   };
 
-  const openTechnicalConnectionSettings = () => {
-    const now = Date.now();
-    const inSequence = now - lastSettingsTap < 1200;
-    const nextCount = inSequence ? settingsTapCount + 1 : 1;
-    setSettingsTapCount(nextCount);
-    setLastSettingsTap(now);
-
-    if (nextCount >= 6) {
-      setSettingsTapCount(0);
-      navigate("/connection-settings", { state: { from: "/app/settings" } });
+  const savePinConfiguration = () => {
+    const cleanPin = pin.replace(/\D/g, "").trim();
+    const cleanConfirm = pinConfirm.replace(/\D/g, "").trim();
+    if (cleanPin.length < 4) {
+      setStatus("El PIN debe tener al menos 4 dígitos.");
+      return;
     }
+    if (cleanPin !== cleanConfirm) {
+      setStatus("El PIN y su confirmación no coinciden.");
+      return;
+    }
+    localStorage.setItem(PIN_KEY, btoa(cleanPin));
+    sessionStorage.setItem("financeflow.security.unlocked.v1", "0");
+    window.dispatchEvent(new Event("financeflow:security-updated"));
+    setPin("");
+    setPinConfirm("");
+    setPinConfigured(true);
+    setStatus("PIN de bloqueo configurado correctamente.");
+  };
+
+  const disablePin = () => {
+    localStorage.removeItem(PIN_KEY);
+    sessionStorage.removeItem("financeflow.security.unlocked.v1");
+    window.dispatchEvent(new Event("financeflow:security-updated"));
+    setPin("");
+    setPinConfirm("");
+    setPinConfigured(false);
+    setStatus("Bloqueo por PIN desactivado.");
+  };
+
+  const saveLockTimeout = () => {
+    const normalized = Number(lockMinutes);
+    if (!Number.isFinite(normalized) || normalized < 1 || normalized > 180) {
+      setStatus("El tiempo de bloqueo debe estar entre 1 y 180 minutos.");
+      return;
+    }
+    localStorage.setItem(LOCK_MINUTES_KEY, String(normalized));
+    setStatus("Tiempo de bloqueo por inactividad actualizado.");
   };
 
   return (
-    <div className="space-y-4 sm:space-y-5">
-      <div className="panel p-4 sm:p-5 lg:p-6">
+    <div className="space-y-4">
+      <div className="panel p-5">
         <h2 className="text-lg font-semibold text-slate-800">Configuración de la Aplicación</h2>
         <p className="mt-1 text-sm text-slate-500">Personaliza seguridad, notificaciones, preferencias financieras y automatización de pagos.</p>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <div className="panel space-y-4 p-4 sm:p-5 lg:p-6">
+        <div className="panel space-y-4 p-5">
           <h3 className="text-sm font-semibold text-slate-700">Perfil</h3>
           <label className="block text-sm text-slate-600">
             Nombre
@@ -286,7 +255,7 @@ export default function SettingsPage() {
           </label>
         </div>
 
-        <div className="panel space-y-4 p-4 sm:p-5 lg:p-6">
+        <div className="panel space-y-4 p-5">
           <h3 className="text-sm font-semibold text-slate-700">Objetivos y Alertas</h3>
           <label className="block text-sm text-slate-600">
             Meta de ahorro mensual (%)
@@ -321,7 +290,7 @@ export default function SettingsPage() {
           </label>
         </div>
 
-        <div className="panel space-y-4 p-4 sm:p-5 lg:p-6">
+        <div className="panel space-y-4 p-5">
           <h3 className="text-sm font-semibold text-slate-700">Seguridad y Sesión</h3>
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
@@ -338,61 +307,68 @@ export default function SettingsPage() {
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
-              checked={settings.security_pin_enabled}
-              onChange={(e) => updateField("security_pin_enabled", e.target.checked)}
-            />
-            Bloquear app con PIN
-          </label>
-          {settings.security_pin_enabled ? (
-            <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
-              <label className="block text-sm text-slate-600">
-                Nuevo PIN (4-6 dígitos)
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={6}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
-                  value={pinDraft}
-                  onChange={(e) => setPinDraft(e.target.value.replace(/\D+/g, ""))}
-                />
-              </label>
-              <label className="block text-sm text-slate-600">
-                Confirmar PIN
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={6}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
-                  value={pinConfirm}
-                  onChange={(e) => setPinConfirm(e.target.value.replace(/\D+/g, ""))}
-                />
-              </label>
-              <label className="block text-sm text-slate-600">
-                Bloqueo por inactividad (minutos)
-                <input
-                  type="number"
-                  min="1"
-                  max="120"
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2"
-                  value={settings.inactivity_lock_minutes}
-                  onChange={(e) => updateField("inactivity_lock_minutes", Number(e.target.value))}
-                />
-              </label>
-            </div>
-          ) : null}
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
               checked={biometricEnabled}
               disabled={!biometricAvailable}
               onChange={(e) => toggleBiometric(e.target.checked)}
             />
             Activar inicio de sesión biométrico
           </label>
-          {!biometricAvailable ? <p className="text-xs text-slate-500">{biometricReason || "Biometría no disponible en este navegador/dispositivo."}</p> : null}
+          {!biometricAvailable ? <p className="text-xs text-slate-500">Biometría no disponible en este navegador/dispositivo.</p> : null}
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-sm font-semibold text-slate-800">Bloqueo con PIN e inactividad</p>
+            <p className="mt-1 text-xs text-slate-500">Protege la app cuando cambias de pantalla o dejas de usarla.</p>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={8}
+                className="rounded-xl border border-slate-200 px-3 py-2"
+                placeholder={pinConfigured ? "Nuevo PIN" : "PIN (4-8 dígitos)"}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+              />
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={8}
+                className="rounded-xl border border-slate-200 px-3 py-2"
+                placeholder="Confirmar PIN"
+                value={pinConfirm}
+                onChange={(e) => setPinConfirm(e.target.value.replace(/\D/g, ""))}
+              />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white" onClick={savePinConfiguration}>
+                {pinConfigured ? "Cambiar PIN" : "Activar PIN"}
+              </button>
+              {pinConfigured ? (
+                <button type="button" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onClick={disablePin}>
+                  Quitar PIN
+                </button>
+              ) : null}
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-end gap-2">
+              <label className="text-xs text-slate-600">
+                Bloquear después de (min)
+                <input
+                  type="number"
+                  min="1"
+                  max="180"
+                  className="mt-1 w-28 rounded-xl border border-slate-200 px-3 py-2"
+                  value={lockMinutes}
+                  onChange={(e) => setLockMinutes(e.target.value)}
+                />
+              </label>
+              <button type="button" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onClick={saveLockTimeout}>
+                Guardar tiempo
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="panel space-y-4 p-4 sm:p-5 lg:p-6">
+        <div className="panel space-y-4 p-5">
           <h3 className="text-sm font-semibold text-slate-700">Notificaciones</h3>
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input type="checkbox" checked={settings.notify_email} onChange={(e) => updateField("notify_email", e.target.checked)} />
@@ -404,7 +380,7 @@ export default function SettingsPage() {
           </label>
         </div>
 
-        <div className="panel space-y-4 p-4 sm:p-5 lg:p-6 xl:col-span-2">
+        <div className="panel space-y-4 p-5 xl:col-span-2">
           <h3 className="text-sm font-semibold text-slate-700">Open Banking y Automatización</h3>
           <p className="text-sm text-slate-500">
             Tus credenciales bancarias no pasan por nuestros servidores. Solo recibimos tokens regulados PSD2/Open Banking.
@@ -443,34 +419,16 @@ export default function SettingsPage() {
             Conectar Cuenta Bancaria
           </button>
         </div>
-
       </div>
 
-      <div className="panel flex flex-col items-start gap-2 p-4 sm:flex-row sm:flex-wrap sm:items-center">
-        <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={() => {
-          const pinResult = applyPinChanges();
-          if (!pinResult.ok) {
-            return;
-          }
-          void saveSettings(pinResult.values);
-        }} disabled={isSaving}>
+      <div className="panel flex flex-wrap items-center gap-2 p-4">
+        <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={() => saveSettings()} disabled={isSaving}>
           {isSaving ? "Guardando..." : "Guardar cambios"}
         </button>
         <button className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60" onClick={resetSettings} disabled={isSaving}>
           Restablecer
         </button>
-        {status ? <p className="text-sm text-slate-700 sm:ml-2">{status}</p> : null}
-      </div>
-
-      <div className="px-1">
-        <button
-          type="button"
-          onClick={openTechnicalConnectionSettings}
-          className="text-[11px] text-slate-400 hover:text-slate-500"
-          aria-label="Abrir configuración técnica"
-        >
-          Versión 1.0.0
-        </button>
+        {status ? <p className="text-sm text-slate-700">{status}</p> : null}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ from app.models.auto_payment import AutoPayment
 from app.models.bank_account import BankAccount
 from app.models.budget import Budget
 from app.models.financial_goal import FinancialGoal
+from app.models.notification_read_state import NotificationReadState
 from app.models.payment_notification import PaymentNotification
 from app.models.planned_expense import PlannedExpense
 from app.models.transaction import Transaction

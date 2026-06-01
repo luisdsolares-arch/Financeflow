@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from math import ceil
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_user
@@ -89,3 +89,56 @@ def get_dashboard_summary(db: Session = Depends(get_db), current_user: User = De
         "projected_monthly_reserve": round(projected_monthly_reserve, 2),
         "upcoming_planned_expenses": upcoming_planned_expenses[:5],
     }
+
+
+@router.get("/calendar")
+def get_dashboard_calendar(
+    month: str | None = Query(default=None, pattern=r"^\d{4}-\d{2}$"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    target_month = month or datetime.utcnow().strftime("%Y-%m")
+
+    txs = (
+        db.query(Transaction)
+        .join(BankAccount, BankAccount.id == Transaction.account_id)
+        .filter(BankAccount.user_id == current_user.id)
+        .all()
+    )
+    planned_rows = (
+        db.query(PlannedExpense)
+        .filter(PlannedExpense.user_id == current_user.id, PlannedExpense.is_active.is_(True))
+        .all()
+    )
+
+    events = []
+    for tx in txs:
+        if tx.date.strftime("%Y-%m") != target_month:
+            continue
+        events.append(
+            {
+                "date": tx.date.isoformat(),
+                "source": "transaction",
+                "kind": tx.type,
+                "title": tx.description,
+                "category": tx.category,
+                "amount": tx.amount,
+            }
+        )
+
+    for row in planned_rows:
+        if row.due_date.strftime("%Y-%m") != target_month:
+            continue
+        events.append(
+            {
+                "date": row.due_date.isoformat(),
+                "source": "planned_expense",
+                "kind": "due",
+                "title": row.description,
+                "category": row.category,
+                "amount": row.amount,
+            }
+        )
+
+    events.sort(key=lambda item: item["date"])
+    return {"month": target_month, "events": events}
